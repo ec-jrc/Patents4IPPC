@@ -1,0 +1,10 @@
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/EP.zip
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/US2001-2004.zip
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/US2005-2006.zip
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/000000.tar.gz
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/00000D.tar.gz
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/000003.tar.gz
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/000004.tar.gz
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/000005.tar.gz
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/000006.tar.gz
+http://ir.nist.gov/TREC2010-CHEM/trec/2009/000007.tar.gz

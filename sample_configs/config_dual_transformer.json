@@ -1,0 +1,10 @@
+{
+    "max_sequence_length": null,
+    "query_mapper_hidden_size": 2048,
+    "min_list_length": 6,
+    "batch_size": 2,
+    "cosine_loss_weight": 0.5,
+    "learning_rate": 0.001,
+    "weight_decay": 0.01,
+    "epochs": 3
+}
