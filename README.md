@@ -8,7 +8,20 @@ The European Green Deal aims to achieve a circular economy with zero pollution. 
 
 In particular, the models developed so far were fine-tuned on Industrial Pollution Prevention and Control (IPPC) documents. The engine is fed passages taken from documents called BREFs, which provide technical descriptions of the Best Available Techniques (BAT) in the field of IPPC, and retrieves relevant abstracts from a patent corpus. The former consist of possibly long text fragments concerning the topic considered, while the latter are shorter and exhibit a more technical language.
 
+## Authors
 
+This project was realized by [Pi School](https://twitter.com/picampusschool)
+ 
+ 
+[Francesco Cariaggi](https://twitter.com/FCariaggi) (Deep Learning Engineer) <br/>
+[Cristiano De Nobili, PhD](https://twitter.com/denocris) (Deep Learning Research Scientist) <br/>
+[Sébastien Bratières](https://twitter.com/Seb_Bratieres) (Director of AI @ Pi School)
+
+
+This project was conceptualized and commissioned by the [Joint Research Centre](https://ec.europa.eu/info/departments/joint-research-centre_en)
+
+Robert Marschinski (JRC - Seville) <br/>
+Andrea Tacchella (JRC - Seville)
 
 
 ## Engine Description
@@ -348,7 +361,3 @@ print(closest_abstracts)
 ```
 -->
 
-## Authors
-
-Francesco Cariaggi (Deep Learning Engineer) [[Twitter](https://twitter.com/FCariaggi), [LinkedIn](https://www.linkedin.com/in/fcr?locale=en_US)] <br/>
-Cristiano De Nobili, PhD (Deep Learning Research Scientist) [[Twitter](https://twitter.com/denocris), [LinkedIn](https://www.linkedin.com/in/cristiano-de-nobili?locale=en_US)]
