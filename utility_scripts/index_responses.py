@@ -89,12 +89,11 @@ def main(
         joblib.dump(embedder, tfidf_output_path)
 
     # Embed the responses and create a dictionary
-    utils.index_documents(
+    utils.index_documents_as_python_dictionary(
         documents=dataset_unique_responses['response'].values.tolist(),
         ids=dataset_unique_responses['response_id'].values,
         embedder=embedder,
         batch_size=batch_size,
-        as_python_dictionary=True,
         store_on_disk=True,
         filename=output_path
     )

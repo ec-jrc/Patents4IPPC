@@ -3,6 +3,7 @@ import joblib
 import click
 
 from patents4IPPC import preprocessing
+from patents4IPPC.similarity_search.faiss_ import index_documents_using_faiss
 import utils
 
 
@@ -99,7 +100,7 @@ def main(
     documents = patstat_corpus['APPLN_ABSTR'].values.tolist()
     ids = patstat_corpus['APPLN_ID'].values
     del patstat_corpus
-    utils.index_documents(
+    index_documents_using_faiss(
         documents=documents,
         ids=ids,
         embedder=embedder,

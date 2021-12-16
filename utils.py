@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import joblib
 import torch
-import faiss
 
 from transformers import BertTokenizerFast
 
@@ -68,13 +67,12 @@ def load_dataset(
 
     return dataset_train, dataset_valid, dataset_test
 
-def index_documents(
+def index_documents_as_python_dictionary(
     documents,
     ids,
     embedder: BaseEmbedder,
     batch_size=64,
     do_lowercase=False,
-    as_python_dictionary=False,
     store_on_disk=False,
     filename=None
 ):
@@ -85,26 +83,16 @@ def index_documents(
         do_lowercase=do_lowercase,
         show_progress=True
     )
-    if as_python_dictionary:
-        index = dict(zip(ids, embeddings))
-        # NOTE: The embeddings are not normalized in this case. That's
-        # because the dictionary mode is used to train a DualTransformer
-        # model, meaning that the normalization step is embedded in the
-        # computation of the cosine similarity between query and
-        # response embeddings within the loss function
-        # TODO: You need to explicitly normalize embeddings if using
-        # another loss function that doesn't involve computing the
-        # cosine similarity
-    else:
-        # Create a FAISS index
-        index = faiss.index_factory(
-            embedder.embedding_size, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT
-        )
-        # Add the normalized embeddings to the index. Normalization is
-        # needed to compute cosine similarities when a search is performed.
-        # Note that queries will also need to be normalized
-        faiss.normalize_L2(embeddings)
-        index.add_with_ids(embeddings, ids)
+
+    index = dict(zip(ids, embeddings))
+    # NOTE: The embeddings are not normalized in this case. That's
+    # because the dictionary mode is used to train a DualTransformer
+    # model, meaning that the normalization step is embedded in the
+    # computation of the cosine similarity between query and
+    # response embeddings within the loss function
+    # TODO: You need to explicitly normalize embeddings if using
+    # another loss function that doesn't involve computing the
+    # cosine similarity
 
     if not store_on_disk:
         return index
@@ -115,37 +103,9 @@ def index_documents(
             'A filename must be provided when you want to store an index on '
             'disk.'
         )
+    
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
-    if as_python_dictionary:
-        joblib.dump(index, filename)
-    else:
-        faiss.write_index(index, filename)
-
-def index_dummy_documents(
-    n_documents, embedding_size, store_on_disk=False, filename=None
-):
-    # Create dummy embeddings as well as their IDs
-    embeddings = np.random.rand(n_documents, embedding_size).astype(np.float32)
-    ids = np.arange(n_documents)
-    # Create a FAISS index
-    index = faiss.index_factory(
-        embedding_size, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT
-    )
-    # Add the normalized embeddings to the index. Normalization is
-    # needed to compute cosine similarities when a search is performed.
-    # Note that queries will also need to be normalized
-    faiss.normalize_L2(embeddings)
-    index.add_with_ids(embeddings, ids)
-
-    if not store_on_disk:
-        return index
-    # Write the index to disk (can be loaded again later)
-    if filename is None:
-        raise ValueError(
-            'A filename must be provided when you want to store an index on '
-            'disk.'
-        )
-    faiss.write_index(index, filename)
+    joblib.dump(index, filename)
 
 def get_embedder(model_type, path_to_model_checkpoint=None):
     if model_type == 'tfidf':
