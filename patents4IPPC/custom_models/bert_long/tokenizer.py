@@ -24,7 +24,7 @@ class BertLongTokenizer(BertTokenizer):
         self.attention_window = attention_window
 
     def __call__(self, *args, **kwargs):
-        _pad_to_multiple_of_attention_window(self, *args, **kwargs)
+        return _pad_to_multiple_of_attention_window(self, *args, **kwargs)
 
 
 class BertLongTokenizerFast(BertTokenizerFast):
@@ -35,4 +35,4 @@ class BertLongTokenizerFast(BertTokenizerFast):
         self.attention_window = attention_window
 
     def __call__(self, *args, **kwargs):
-        _pad_to_multiple_of_attention_window(self, *args, **kwargs)
+        return _pad_to_multiple_of_attention_window(self, *args, **kwargs)
