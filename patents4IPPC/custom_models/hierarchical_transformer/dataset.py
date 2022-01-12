@@ -46,7 +46,7 @@ class DocumentSimilarityDataset(Dataset):
         self.labels = labels
 
     @classmethod
-    def from_directory(cls, path_to_dir, tokenizer):
+    def from_directory(cls, path_to_dir, tokenizer, model_max_length):
         dataset_dir = Path(path_to_dir)
         qrels = pd.read_csv(
             str(dataset_dir / "qrels.txt"),
@@ -63,7 +63,13 @@ class DocumentSimilarityDataset(Dataset):
             right_documents.append(right_doc_file.read_text().split("\n"))
             labels.append(label)
 
-        dataset = cls(left_documents, right_documents, labels, tokenizer)
+        dataset = cls(
+            left_documents,
+            right_documents,
+            labels,
+            tokenizer,
+            model_max_length
+        )
         return dataset
 
     def __len__(self):
