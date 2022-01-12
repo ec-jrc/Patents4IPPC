@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from .utils import concat_encoded_inputs
+from .utils import concat_encoded_inputs, move_encoded_inputs_to_device
 
 
 @dataclass
@@ -41,6 +41,8 @@ class DocumentSimilarityTrainer:
         self.training_arguments = training_arguments
         self.eval_dataset = eval_dataset
         self.output_dir = Path(output_dir) if output_dir is not None else None
+
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.train_loss_history = []
         self.eval_loss_history = []
@@ -134,10 +136,14 @@ class DocumentSimilarityTrainer:
 
     def _run_single_epoch_of_training(self):
         self.model.train()  # Set model to training mode
+        self.model.to(self.device)  # Possibly move the model to the GPU
         progress_bar = tqdm(self.data_loader, leave=True)
         batch_losses = []
         for batch in progress_bar:
-            loss_value = self._run_single_training_step(batch)
+            batch_in_correct_device = move_encoded_inputs_to_device(
+                batch, self.device
+            )
+            loss_value = self._run_single_training_step(batch_in_correct_device)
             progress_bar.set_postfix_str(f"Loss: {loss_value:.4f}")
             batch_losses.append(loss_value)
         
