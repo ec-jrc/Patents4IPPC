@@ -1,0 +1,8 @@
+{
+    "activation": "gelu",
+    "attention_heads": 4,
+    "dim_feedforward": 1024,
+    "dropout_drop_rate": 0.1,
+    "layer_norm_eps": 0.00001,
+    "num_layers": 1
+}

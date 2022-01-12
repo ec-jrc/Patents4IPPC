@@ -1,18 +1,13 @@
-from pathlib import Path
-import string
 import math
+import string
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
 import joblib
 import torch
 
-from transformers import BertTokenizerFast
-
 from patents4IPPC.embedders.base_embedder import BaseEmbedder
-from patents4IPPC.embedders.baseline import tfidf, glove, use
-from patents4IPPC.embedders.advanced import huggingface
-from patents4IPPC import preprocessing
 
 
 def load_dataset(
@@ -23,19 +18,19 @@ def load_dataset(
     seed=None,
     normalize_labels=True
 ):
-    dataset = pd.read_csv(path_to_dataset).dropna(subset=['query', 'response'])
+    dataset = pd.read_csv(path_to_dataset).dropna(subset=["query", "response"])
     if normalize_labels:
-        dataset.loc[:, 'label'] = dataset['label'] / dataset['label'].max()
+        dataset.loc[:, "label"] = dataset["label"] / dataset["label"].max()
     
-    if 'split' in dataset.columns:
-        dataset_train = dataset[dataset['split'] == 'train']
-        dataset_valid = dataset[dataset['split'] == 'dev']
-        dataset_test = dataset[dataset['split'] == 'test']
+    if "split" in dataset.columns:
+        dataset_train = dataset[dataset["split"] == "train"]
+        dataset_valid = dataset[dataset["split"] == "dev"]
+        dataset_test = dataset[dataset["split"] == "test"]
     else:
         assert train_portion + valid_portion + test_portion == 1.0, \
-               'Fractions of train, validation and test do not sum up to 1.'
+               "Fractions of train, validation and test do not sum up to 1."
         # Get the unique query ids
-        query_ids = dataset['query_id'].unique()
+        query_ids = dataset["query_id"].unique()
         # Shuffle them
         np.random.seed(seed)
         np.random.shuffle(query_ids)
@@ -61,9 +56,9 @@ def load_dataset(
         test_end_idx = valid_end_idx + n_test_queries
         test_ids = query_ids[valid_end_idx:test_end_idx]
 
-        dataset_train = dataset[dataset['query_id'].isin(train_ids)]
-        dataset_valid = dataset[dataset['query_id'].isin(valid_ids)]
-        dataset_test = dataset[dataset['query_id'].isin(test_ids)]
+        dataset_train = dataset[dataset["query_id"].isin(train_ids)]
+        dataset_valid = dataset[dataset["query_id"].isin(valid_ids)]
+        dataset_test = dataset[dataset["query_id"].isin(test_ids)]
 
     return dataset_train, dataset_valid, dataset_test
 
@@ -100,63 +95,30 @@ def index_documents_as_python_dictionary(
     # Write the index to disk (can be loaded again later)
     if filename is None:
         raise ValueError(
-            'A filename must be provided when you want to store an index on '
-            'disk.'
+            "A filename must be provided when you want to store an index on "
+            "disk."
         )
     
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(index, filename)
 
-def get_embedder(model_type, path_to_model_checkpoint=None):
-    if model_type == 'tfidf':
-        if path_to_model_checkpoint is not None:
-            embedder = tfidf.TfidfEmbedder.from_pretrained(
-                path_to_model_checkpoint
-            )
-        else:
-            embedder = tfidf.TfidfEmbedder(
-                return_dense_embeddings=True,
-                lowercase=True, # To increase the variety of possible words
-                preprocessor=preprocessing.preprocess_for_tfidf,
-                tokenizer=BertTokenizerFast.from_pretrained(
-                    'bert-base-uncased'
-                ).tokenize,
-                max_df=0.7,
-                max_features=8192 # TODO: Is this the right number?
-            )
-    elif model_type == 'glove':
-        embedder = glove.GloveEmbedder(path_to_model_checkpoint)
-    elif model_type == 'use':
-        embedder = use.UniversalSentenceEncoderEmbedder(
-            path_to_model_checkpoint
-        )
-    elif model_type == 'huggingface':
-        embedder = huggingface.HuggingFaceTransformerEmbedder(
-            path_to_model_checkpoint
-        )
-    elif model_type == 'dual':
-        embedder = huggingface.DualTransformerEmbedder(
-            path_to_model_checkpoint
-        )
-    else:
-        raise ValueError(f'Unknown model type "{model_type}".')
-
-    return embedder
-
-def mean_pool(huggingface_model_output, attention_mask):
-    output = huggingface_model_output.last_hidden_state
-    pad_tokens_mask = torch.unsqueeze(attention_mask, -1)
-    masked_output = output * pad_tokens_mask
-    avg_pooled_output = (masked_output.sum(axis=1)
-                         / pad_tokens_mask.sum(axis=1))
-    return avg_pooled_output    
+# Taken from Huggingface Hub
+def mean_pool_embeddings_with_attention_mask(embeddings, attention_mask):
+    input_mask_expanded = (
+        attention_mask
+        .unsqueeze(-1)
+        .expand(embeddings.size())
+        .float()
+    )
+    return (torch.sum(embeddings * input_mask_expanded, axis=1)
+            / torch.clamp(input_mask_expanded.sum(axis=1), min=1e-9))
 
 def ucid_to_int(ucid):
     capital_letters = string.ascii_uppercase
-    ucid_no_dashes = ucid.replace('-', '')
+    ucid_no_dashes = ucid.replace("-", "")
     characters = list(ucid_no_dashes)
     encoded_characters = list(map(
         lambda c: str(capital_letters.index(c)) if c in capital_letters else c,
         characters
     ))
-    return int(''.join(encoded_characters))
+    return int("".join(encoded_characters))

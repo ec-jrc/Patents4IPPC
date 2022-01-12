@@ -3,8 +3,8 @@ from pathlib import Path
 import pandas as pd
 import click
 
+from patents4IPPC.embedders.utils import get_embedder
 from patents4IPPC.similarity_search.faiss_ import FaissDocumentRetriever
-import utils
 
 
 @click.command()
@@ -80,7 +80,7 @@ def main(
 
     # Load an embedder
     print('Loading the embedder...')
-    embedder = utils.get_embedder(model_type, path_to_model_checkpoint)
+    embedder = get_embedder(model_type, path_to_model_checkpoint)
 
     # Embed the queries
     print('Embedding the queries...')

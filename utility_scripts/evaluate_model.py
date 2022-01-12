@@ -7,7 +7,7 @@ import click
 from patents4IPPC.evaluation import (
     compute_cosine_scores, compute_spearman_querywise, compute_ndcg
 )
-import utils
+from patents4IPPC.embedders.utils import get_embedder
 
 
 @click.command()
@@ -56,7 +56,7 @@ def main(
                ('Must provide pre-computed response embeddings for evaluating '
                 'the performances of a DualTransformer model.')
     
-    embedder = utils.get_embedder(model_type, path_to_model_checkpoint)
+    embedder = get_embedder(model_type, path_to_model_checkpoint)
     dataset = pd.read_csv(path_to_dataset).dropna(subset=['query', 'response'])
 
     precomputed_response_embeddings = None

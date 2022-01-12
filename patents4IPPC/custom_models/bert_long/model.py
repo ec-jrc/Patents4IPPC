@@ -20,12 +20,12 @@ class BertLongSelfAttention(LongformerSelfAttention):
 
         return super().forward(
             hidden_states,
-            attention_mask,
-            layer_head_mask,
-            is_index_masked,
-            is_index_global_attn,
-            is_global_attn,
-            output_attentions
+            attention_mask=attention_mask,
+            layer_head_mask=layer_head_mask,
+            is_index_masked=is_index_masked,
+            is_index_global_attn=is_index_global_attn,
+            is_global_attn=is_global_attn,
+            output_attentions=output_attentions
         )
 
 def _replace_self_attention_layers(self, config):

@@ -1,6 +1,7 @@
 import joblib
 import click
 
+from patents4IPPC.embedders.utils import get_embedder
 import utils
 
 
@@ -79,7 +80,7 @@ def main(
            f'Response IDs must be integers (found "{response_ids_dtype}").'
     
     # Load the embedder
-    embedder = utils.get_embedder(model_type, path_to_model_checkpoint)
+    embedder = get_embedder(model_type, path_to_model_checkpoint)
     # Optionally fit the embedder
     dataset_unique_responses = dataset.drop_duplicates(
         subset=['response_id'], keep='first'

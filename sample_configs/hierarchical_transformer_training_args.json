@@ -1,0 +1,9 @@
+{
+  "learning_rate_for_document_embedder": 0.01,
+  "learning_rate_for_segment_transformer": 0.00005,
+  "weight_decay": 0.0,
+  "batch_size": 2,
+  "eval_batch_size": 2,
+  "seed": 0,
+  "freeze_segment_embedder_weights": true
+}

@@ -3,8 +3,8 @@ import joblib
 import click
 
 from patents4IPPC import preprocessing
+from patents4IPPC.embedders.utils import get_embedder
 from patents4IPPC.similarity_search.faiss_ import index_documents_using_faiss
-import utils
 
 
 @click.command()
@@ -75,7 +75,7 @@ def main(
                ('Please provide a path where the fitted TF-IDF model will be '
                 'saved.')
 
-    embedder = utils.get_embedder(model_type, path_to_model_checkpoint)
+    embedder = get_embedder(model_type, path_to_model_checkpoint)
 
     patstat_corpus = pd.read_csv(path_to_patstat_corpus, encoding='latin1')
     patstat_corpus = patstat_corpus.dropna()

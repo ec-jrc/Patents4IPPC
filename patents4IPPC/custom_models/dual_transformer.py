@@ -318,7 +318,9 @@ class DualTransformer(torch.nn.Module):
         # Get the output from the embedder
         output = embedder(**inputs)
         # Perform a mean pooling of the output
-        mean_pooled_output = utils.mean_pool(output, inputs['attention_mask'])
+        mean_pooled_output = utils.mean_pool_embeddings_with_attention_mask(
+            output.last_hidden_state, inputs['attention_mask']
+        )
         return mean_pooled_output
 
     def forward(

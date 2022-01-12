@@ -60,8 +60,8 @@ class HuggingFaceTransformerEmbedder(BaseEmbedder):
             output = self.model(**inputs)
             # Take the average of the output embeddings as our document
             # embeddings
-            mean_pooled_output = utils.mean_pool(
-                output, inputs['attention_mask']
+            mean_pooled_output = utils.mean_pool_embeddings_with_attention_mask(
+                output.last_hidden_state, inputs['attention_mask']
             )
             embeddings_batch = (
                 mean_pooled_output
@@ -166,8 +166,8 @@ class DualTransformerEmbedder(BaseEmbedder):
             output = self.query_model(**inputs)
             # Take the average of the output embeddings as our document
             # embeddings
-            mean_pooled_output = utils.mean_pool(
-                output, inputs['attention_mask']
+            mean_pooled_output = utils.mean_pool_embeddings_with_attention_mask(
+                output.last_hidden_state, inputs['attention_mask']
             )
             # Project the embeddings using the query mapper
             projected_output = self.query_mapper(mean_pooled_output)

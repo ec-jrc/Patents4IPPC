@@ -117,6 +117,8 @@ class BertLongConverter:
         longformer_self_attention.key = layer.attention.self.key
         longformer_self_attention.value = layer.attention.self.value
 
+        # TODO: Check if it's possible to avoid allocating these tensors,
+        # assuming we don't need global attention.
         longformer_self_attention.query_global = copy.deepcopy(
             layer.attention.self.query
         )
