@@ -146,10 +146,7 @@ class DocumentSimilarityTrainer:
         progress_bar = tqdm(self.data_loader, leave=True)
         batch_losses = []
         for batch in progress_bar:
-            batch_in_correct_device = move_encoded_inputs_to_device(
-                batch, self.device
-            )
-            loss_value = self._run_single_training_step(batch_in_correct_device)
+            loss_value = self._run_single_training_step(batch)
             progress_bar.set_postfix_str(f"Loss: {loss_value:.4f}")
             batch_losses.append(loss_value)
         
