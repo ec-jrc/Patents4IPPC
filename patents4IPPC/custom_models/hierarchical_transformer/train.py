@@ -80,21 +80,29 @@ class DocumentSimilarityTrainer:
             RIGHT_DOCUMENT_IDS = 3
             LABELS = 4
             collated_samples = [
-                concat_encoded_inputs([
-                    sample[LEFT_ENCODED_SEGMENTS] for sample in list_of_samples
-                ]),
+                move_encoded_inputs_to_device(
+                    concat_encoded_inputs([
+                        sample[LEFT_ENCODED_SEGMENTS]
+                        for sample in list_of_samples
+                    ]),
+                    self.device
+                ),
                 np.concatenate([
                     sample[LEFT_DOCUMENT_IDS] for sample in list_of_samples
                 ]),
-                concat_encoded_inputs([
-                    sample[RIGHT_ENCODED_SEGMENTS] for sample in list_of_samples
-                ]),
+                move_encoded_inputs_to_device(
+                    concat_encoded_inputs([
+                        sample[RIGHT_ENCODED_SEGMENTS]
+                        for sample in list_of_samples
+                    ]),
+                    self.device
+                ),
                 np.concatenate([
                     sample[RIGHT_DOCUMENT_IDS] for sample in list_of_samples
                 ]),
                 torch.tensor([
                     sample[LABELS] for sample in list_of_samples
-                ])
+                ], device=self.device)
             ]
             return collated_samples
 
@@ -102,16 +110,14 @@ class DocumentSimilarityTrainer:
             self.train_dataset,
             batch_size=self.training_arguments.batch_size,
             shuffle=True,
-            collate_fn=collate_fn,
-            pin_memory=True
+            collate_fn=collate_fn
         )
         if self._is_evaluation_needed():
             self.eval_data_loader = DataLoader(
                 self.eval_dataset,
                 batch_size=self.training_arguments.eval_batch_size,
                 shuffle=False,
-                collate_fn=collate_fn,
-                pin_memory=True
+                collate_fn=collate_fn
             )        
 
     def _is_evaluation_needed(self):

@@ -26,8 +26,8 @@ def create_new_model(
     document_embedder_type,
     path_to_document_embedder_config
 ):
-    segment_transformer = AutoModel.from_pretrained(path_to_segment_transformer, cache_dir="junk") # TODO: remove #####
-    tokenizer = AutoTokenizer.from_pretrained(path_to_segment_transformer, cache_dir="junk") # TODO: remove ###########
+    segment_transformer = AutoModel.from_pretrained(path_to_segment_transformer)
+    tokenizer = AutoTokenizer.from_pretrained(path_to_segment_transformer)
 
     embedder_type_to_config_class = {
         "recurrence": RecurrenceBasedDocumentEmbedderConfig,
