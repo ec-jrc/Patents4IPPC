@@ -15,7 +15,8 @@ class DocumentSimilarityDataset(Dataset):
         left_documents: List[List[str]],
         right_documents: List[List[str]],
         labels,
-        tokenizer
+        tokenizer,
+        model_max_length
     ):
         assert len(left_documents) == len(right_documents) == len(labels), \
             ("`left_documents`, `right_documents` and `labels` must all be "
@@ -26,7 +27,7 @@ class DocumentSimilarityDataset(Dataset):
         all_documents = left_documents + right_documents
         encoded_segments, document_ids = \
             prepare_inputs_for_hierarchical_transformer(
-                all_documents, self.tokenizer
+                all_documents, self.tokenizer, model_max_length
             )
 
         left_segments_mask = (document_ids <= max(document_ids) // 2)

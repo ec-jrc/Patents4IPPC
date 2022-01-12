@@ -51,7 +51,8 @@ class HierarchicalTransformerEmbedder(BaseEmbedder):
             encoded_segments, document_ids = \
                 utils.prepare_inputs_for_hierarchical_transformer(
                     segmented_texts[batch_start_idx:batch_end_idx],
-                    self.tokenizer
+                    self.tokenizer,
+                    self.model.segment_transformer.config.max_position_embeddings
                 )
             encoded_segments = utils.move_encoded_inputs_to_device(
                 encoded_segments, self.device

@@ -33,7 +33,9 @@ def move_encoded_inputs_to_device(encoded_inputs, device):
     return {k: v.to(device) for k, v in encoded_inputs.items()}
 
 def prepare_inputs_for_hierarchical_transformer(
-    documents: List[List[str]], tokenizer: PreTrainedTokenizer
+    documents: List[List[str]],
+    tokenizer: PreTrainedTokenizer,
+    model_max_length: int
 ):
     """Converts a list of documents into a format that's suitable for
     consumption by a HierarchicalTransformer model.
@@ -44,6 +46,8 @@ def prepare_inputs_for_hierarchical_transformer(
           whatever).
         tokenizer (PreTrainedTokenizer): HuggingFace tokenizer for 
           tokenizing the segments.
+        model_max_length (int): Maximum number of tokens that the 
+          segment transformer can handle.
     
     Returns:
         Tuple[Dict, numpy.ndarray]: The tokenized segments and an array
@@ -55,7 +59,7 @@ def prepare_inputs_for_hierarchical_transformer(
     encoded_segments = tokenizer(
         segments,
         padding="max_length",
-        max_length=tokenizer.model_max_length,
+        max_length=model_max_length,
         truncation=True,
         return_tensors="pt"        
     ).data

@@ -154,10 +154,14 @@ def main(
         )
 
     train_dataset = DocumentSimilarityDataset.from_directory(
-        path_to_train_dataset_dir, tokenizer
+        path_to_train_dataset_dir,
+        tokenizer,
+        model.segment_transformer.config.max_position_embeddings
     )
     eval_dataset = DocumentSimilarityDataset.from_directory(
-        path_to_eval_dataset_dir, tokenizer
+        path_to_eval_dataset_dir,
+        tokenizer,
+        model.segment_transformer.config.max_position_embeddings
     )
 
     training_arguments = TrainingArguments.from_json(path_to_training_arguments)
