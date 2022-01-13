@@ -150,7 +150,9 @@ class HierarchicalTransformer(torch.nn.Module):
             separated_segment_embeddings, dim=0
         )
         attention_mask = torch.tensor(
-            np.stack(attention_masks, axis=0), dtype=bool
+            np.stack(attention_masks, axis=0),
+            dtype=bool,
+            device=batched_segment_embeddings.device.type
         )
         return batched_segment_embeddings, attention_mask
 
