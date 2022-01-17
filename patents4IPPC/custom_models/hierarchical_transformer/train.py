@@ -15,11 +15,11 @@ from .utils import concat_encoded_inputs, move_encoded_inputs_to_device
 class TrainingArguments:
     learning_rate_for_document_embedder: float = 1e-2
     learning_rate_for_segment_transformer: float = 5e-5
-    weight_decay: float = 0
-    batch_size: int = 2
-    eval_batch_size: int = 2
+    weight_decay: float = 0.0
+    batch_size: int = 8
+    cosine_loss_margin: float = 0.4
     seed: int = 0
-    freeze_segment_embedder_weights: bool = False
+    top_layers_to_train: int = 0
 
     @classmethod
     def from_json(cls, path_to_json_file):
@@ -31,12 +31,15 @@ class DocumentSimilarityTrainer:
     def __init__(
         self,
         model,
+        segment_transformer_encoder_attr_name,
         train_dataset,
         training_arguments,
         eval_dataset=None,
         output_dir=None
     ):
         self.model = model
+        self.segment_transformer_encoder_attr_name = \
+            segment_transformer_encoder_attr_name
         self.train_dataset = train_dataset
         self.training_arguments = training_arguments
         self.eval_dataset = eval_dataset
@@ -49,27 +52,25 @@ class DocumentSimilarityTrainer:
         self.best_train_loss = np.inf
         self.best_eval_loss = np.inf
 
-        self._initialize_loss_and_optimizer()
+        self.loss_fn = torch.nn.CosineEmbeddingLoss(
+            margin=training_arguments.cosine_loss_margin, reduction="mean"
+        )
+        self._initialize_optimizer()
         self._initialize_data_loaders()
 
-    def _initialize_loss_and_optimizer(self):
-        self.loss_fn = torch.nn.CosineEmbeddingLoss(margin=0, reduction="mean")
-
-        trainable_parameters = [{
+    def _initialize_optimizer(self):
+        document_embedder_params_spec = {
             "params": self.model.document_embedder.parameters(),
             "lr": self.training_arguments.learning_rate_for_document_embedder,
             "weight_decay": self.training_arguments.weight_decay
-        }]
-        if self.training_arguments.freeze_segment_embedder_weights:
-            for tensor in self.model.segment_transformer.parameters():
-                tensor.requires_grad = False
-        else:
-            trainable_parameters.append({
-                "params": self.model.segment_transformer.parameters(),
-                "lr": self.training_arguments.learning_rate_for_segment_transformer,
-                "weight_decay": self.training_arguments.weight_decay            
-            })
-        self.optimizer = torch.optim.Adam(trainable_parameters)
+        }
+
+        segment_transformer_params_specs = \
+            self._get_segment_transformer_params_specs()
+
+        self.optimizer = torch.optim.Adam([
+            document_embedder_params_spec, *segment_transformer_params_specs
+        ])
 
     def _initialize_data_loaders(self):
         torch.manual_seed(self.training_arguments.seed)
@@ -115,15 +116,71 @@ class DocumentSimilarityTrainer:
         if self._is_evaluation_needed():
             self.eval_data_loader = DataLoader(
                 self.eval_dataset,
-                batch_size=self.training_arguments.eval_batch_size,
+                batch_size=self.training_arguments.batch_size,
                 shuffle=False,
                 collate_fn=collate_fn
             )        
+
+    def _get_segment_transformer_params_specs(self):
+        segment_transformer_layers = self._get_segment_transformer_layers()
+        segment_transformer_params_specs = \
+            self._make_top_layers_of_segment_transformer_trainable(
+                segment_transformer_layers
+            )
+        return segment_transformer_params_specs        
+
+    def _get_segment_transformer_layers(self):
+        segment_transformer_encoder = getattr(
+            self.model.segment_transformer,
+            self.segment_transformer_encoder_attr_name
+        )
+        segment_transformer_encoder_layers = next(
+            filter(
+                lambda v: isinstance(v, torch.nn.ModuleList),
+                segment_transformer_encoder._modules.values()
+            )
+        )
+        segment_transformer_layers = [
+            *segment_transformer_encoder_layers,
+            segment_transformer_encoder.embedder
+        ]
+        return segment_transformer_layers
+
+    def _make_top_layers_of_segment_transformer_trainable(
+        self, segment_transformer_layers
+    ):
+        n_layers = len(segment_transformer_layers)
+        assert self.training_arguments.top_layers_to_train <= n_layers, \
+            ("You requested to train the top "
+                f"{self.training_arguments.top_layers_to_train} layers, but "
+                f"the model only has {n_layers} layers ({n_layers - 1} "
+                f"encoder layers + 1 embedding layer.")
+
+        if self.training_arguments.top_layers_to_train < 0:
+            self.training_arguments.top_layers_to_train = n_layers
+
+        params_specs = []
+        for i, layer in enumerate(reversed(segment_transformer_layers), 1):
+            should_layer_be_trained = i <= self.training_arguments.top_layers_to_train
+            for p in layer.parameters():
+                p.requires_grad = should_layer_be_trained                
+            if should_layer_be_trained:
+                params_specs.append({
+                    "params": layer.parameters(),
+                    "lr": self.training_arguments.learning_rate_for_segment_transformer,
+                    "weight_decay": self.training_arguments.weight_decay                        
+                })
+        
+        return params_specs
 
     def _is_evaluation_needed(self):
         return self.eval_dataset is not None
 
     def train(self, num_epochs):
+        # TODO: In principle, if the user chose to freeze all of the 
+        # segment transformer's weights, it wouldn't make sense to 
+        # compute sentence embeddings from scratch at each epoch, 
+        # therefore we should cache them somehow.
         for epoch in range(1, num_epochs + 1):
             print(f"Epoch {epoch}/{num_epochs}")
             train_loss = self._run_single_epoch_of_training()
@@ -223,20 +280,18 @@ class DocumentSimilarityTrainer:
         )
 
     def _adjust_learning_rate_based_on_total_number_of_segments(self, batch):
-        if self.training_arguments.freeze_segment_embedder_weights:
-            return
-        
-        base_learning_rate_of_segment_transformer = \
-            self.optimizer.param_groups[1]["lr"]
-        
         n_left_segments = len(batch[0])
         n_right_segments = len(batch[2])
-        rescaling_factor = (n_left_segments + n_right_segments) / 32 # TODO: find a better solution than hardcoding
+        rescaling_factor = ((n_left_segments + n_right_segments)
+                            / self.training_arguments.batch_size)
         
-        adjusted_learning_rate_of_segment_transformer = \
-            base_learning_rate_of_segment_transformer * rescaling_factor
-        self.optimizer.param_groups[1]["lr"] = \
-            adjusted_learning_rate_of_segment_transformer
+        base_lr_of_segment_transformer = \
+            self.training_arguments.learning_rate_for_segment_transformer
+        adjusted_lr_of_segment_transformer = \
+            base_lr_of_segment_transformer * rescaling_factor
+        
+        for param_group in self.optimizer.param_groups[1:]:
+            param_group["lr"] = adjusted_lr_of_segment_transformer
 
     def _backpropagate_gradients(self, loss):
         self.optimizer.zero_grad()
@@ -244,11 +299,9 @@ class DocumentSimilarityTrainer:
         self.optimizer.step()        
 
     def _restore_learning_rate(self):
-        if self.training_arguments.freeze_segment_embedder_weights:
-            return
-                
-        self.optimizer.param_groups[1]["lr"] = \
-            self.training_arguments.learning_rate_for_segment_transformer
+        for param_group in self.optimizer.param_groups[1:]:
+            param_group["lr"] = \
+                self.training_arguments.learning_rate_for_segment_transformer
 
     def _save_model_if_better_than_previous_ones(self):
         if len(self.eval_loss_history) == 0:

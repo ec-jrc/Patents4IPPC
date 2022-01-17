@@ -29,7 +29,7 @@ class HierarchicalTransformer(torch.nn.Module):
         segment_transformer,
         document_embedder_type=DocumentEmbedderType.TRANSFORMER,
         document_embedder_config=DEFAULT_DOCUMENT_EMBEDDER_CONFIG,
-        segment_transformer_forward_batch_size=2
+        segment_transformer_inner_batch_size=2
         # ^ NOTE: This is NOT the effective batch size for the segment
         # transformer, but rather the amount of samples on which it can
         # perform a forward pass without incurring in an OOM error.
@@ -41,8 +41,8 @@ class HierarchicalTransformer(torch.nn.Module):
             segment_transformer.config,
             document_embedder_config
         )
-        self.segment_transformer_forward_batch_size = \
-            segment_transformer_forward_batch_size
+        self.segment_transformer_inner_batch_size = \
+            segment_transformer_inner_batch_size
 
     def forward(self, encoded_inputs, document_ids: np.ndarray):
         # `encoded_inputs` has shape (n_total_segments, segment_length),
@@ -92,9 +92,9 @@ class HierarchicalTransformer(torch.nn.Module):
         for start_index in range(
             0,
             len(encoded_inputs["input_ids"]),
-            self.segment_transformer_forward_batch_size
+            self.segment_transformer_inner_batch_size
         ):
-            end_index = start_index + self.segment_transformer_forward_batch_size
+            end_index = start_index + self.segment_transformer_inner_batch_size
             encoded_inputs_batch = index_encoded_inputs(
                 encoded_inputs, slice(start_index, end_index)
             )
@@ -157,12 +157,14 @@ class HierarchicalTransformer(torch.nn.Module):
         return batched_segment_embeddings, attention_mask
 
     @staticmethod
-    def from_pretrained(path_to_checkpoint):
+    def from_pretrained(
+        path_to_checkpoint, segment_transformer_inner_batch_size=2
+    ):
         checkpoint_dir = Path(path_to_checkpoint)
         segment_transformer = AutoModel.from_pretrained(
             str(checkpoint_dir / "segment_transformer")
         )
-        
+
         config_file = checkpoint_dir / "document_embedder" / "config.json"
         config_params = json.loads(config_file.read_text())
 
@@ -175,7 +177,7 @@ class HierarchicalTransformer(torch.nn.Module):
             segment_transformer,
             document_embedder_type,
             document_embedder_config,
-            segment_transformer_forward_batch_size=2  # TODO: Avoid hardcoding
+            segment_transformer_inner_batch_size
         )
 
         state_dict = torch.load(

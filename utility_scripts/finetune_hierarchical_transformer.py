@@ -1,8 +1,5 @@
 from pathlib import Path
-import json
 
-import pandas as pd
-import torch
 import click
 from transformers import AutoModel, AutoTokenizer
 
@@ -12,7 +9,6 @@ from patents4IPPC.custom_models.hierarchical_transformer import (
     HierarchicalTransformer,
     TrainingArguments
 )
-
 from patents4IPPC.custom_models.hierarchical_transformer.embedding_documents \
     import (
         DocumentEmbedderType,
@@ -24,7 +20,8 @@ from patents4IPPC.custom_models.hierarchical_transformer.embedding_documents \
 def create_new_model(
     path_to_segment_transformer,
     document_embedder_type,
-    path_to_document_embedder_config
+    path_to_document_embedder_config,
+    segment_transformer_inner_batch_size
 ):
     segment_transformer = AutoModel.from_pretrained(path_to_segment_transformer)
     tokenizer = AutoTokenizer.from_pretrained(path_to_segment_transformer)
@@ -48,16 +45,16 @@ def create_new_model(
         segment_transformer,
         embedder_type_to_enum_value[document_embedder_type],
         document_embedder_config,
-        segment_transformer_forward_batch_size=2
+        segment_transformer_inner_batch_size
     )
 
     return model, tokenizer
 
 def load_pretrained_model_and_tokenizer(
-    path_to_pretrained_model_dir
+    path_to_pretrained_model_dir, segment_transformer_inner_batch_size
 ):
     model = HierarchicalTransformer.from_pretrained(
-        path_to_pretrained_model_dir
+        path_to_pretrained_model_dir, segment_transformer_inner_batch_size
     )
     segment_transformer_dir = \
         Path(path_to_pretrained_model_dir) / "segment_transformer"
@@ -83,6 +80,17 @@ def load_pretrained_model_and_tokenizer(
     default=None,
     help=("Path to a pre-trained HuggingFace transformers model to be used to "
           "encode segments. Ignored if \"--pretrained-model\" was specified.")
+)
+@click.option(
+    "-b", "--segment-transformer-inner-batch-size",
+    type=int,
+    required=True,
+    help=("Inner batch size of the segment transformer. NOTE: this is NOT its "
+          "effective batch size, but rather the amount of samples on which it "
+          "can perform a forward pass without incurring in an OOM error. The "
+          "actual batch size depends on the total number of segments within a "
+          "batch of documents. For higher efficiency, set this to the maximum "
+          "value that the model can handle.")
 )
 @click.option(
     "-t", "--document-embedder-type",
@@ -134,6 +142,7 @@ def load_pretrained_model_and_tokenizer(
 def main(
     path_to_pretrained_model_dir,
     path_to_segment_transformer,
+    segment_transformer_inner_batch_size,
     document_embedder_type,
     path_to_train_dataset_dir,
     path_to_eval_dataset_dir,
@@ -144,13 +153,14 @@ def main(
 ):
     if path_to_pretrained_model_dir is not None:
         model, tokenizer = load_pretrained_model_and_tokenizer(
-            path_to_pretrained_model_dir
+            path_to_pretrained_model_dir, segment_transformer_inner_batch_size
         )
     else:
         model, tokenizer = create_new_model(
             path_to_segment_transformer,
             document_embedder_type,
-            path_to_document_embedder_config
+            path_to_document_embedder_config,
+            segment_transformer_inner_batch_size
         )
 
     train_dataset = DocumentSimilarityDataset.from_directory(
@@ -164,9 +174,12 @@ def main(
         model.segment_transformer.config.max_position_embeddings
     )
 
-    training_arguments = TrainingArguments.from_json(path_to_training_arguments)
+    training_arguments = TrainingArguments.from_json(
+        path_to_training_arguments
+    )
     trainer = DocumentSimilarityTrainer(
         model,
+        "encoder",
         train_dataset,
         training_arguments,
         eval_dataset,
@@ -177,14 +190,3 @@ def main(
 
 if __name__ == "__main__":
     main() # pylint: disable=no-value-for-parameter
-    # main(
-    #     path_to_pretrained_model_dir=None,
-    #     path_to_segment_transformer="distilbert-base-uncased",
-    #     document_embedder_type="transformer",
-    #     path_to_train_dataset_dir="/home/anfri/Desktop/clef_ip_2013/train",
-    #     path_to_eval_dataset_dir="/home/anfri/Desktop/clef_ip_2013/test",
-    #     path_to_document_embedder_config="sample_configs/config_transformer_doc_embedder.json",
-    #     path_to_training_arguments="sample_configs/hierarchical_transformer_training_args.json",
-    #     epochs=2,
-    #     output_dir="/home/anfri/Desktop/hier"
-    # )
