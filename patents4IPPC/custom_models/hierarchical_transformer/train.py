@@ -141,7 +141,7 @@ class DocumentSimilarityTrainer:
             )
         )
         segment_transformer_layers = [
-            segment_transformer_encoder.embeddings,
+            self.model.segment_transformer.embeddings,
             *segment_transformer_encoder_layers
         ]
         return segment_transformer_layers
