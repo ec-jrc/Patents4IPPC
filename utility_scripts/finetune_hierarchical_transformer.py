@@ -100,6 +100,14 @@ def load_pretrained_model_and_tokenizer(
           "embeddings. Ignored if \"--pretrained-model\" was specified.")
 )
 @click.option(
+    "-ea", "--encoder-attribute-name", "segment_transformer_encoder_attr_name",
+    type=str,
+    default="encoder",
+    help=("Within the segment Transformer, name of the attribute that holds "
+          "the encoder module of the Transformer. Needed in case you want to "
+          "train some of the top layers of the model.")
+)
+@click.option(
     "-td", "--train-dataset-dir", "path_to_train_dataset_dir",
     type=click.Path(exists=True, file_okay=False),
     required=True,
@@ -139,17 +147,27 @@ def load_pretrained_model_and_tokenizer(
     required=True,
     help="Directory where the fine-tuned model will be saved."
 )
+@click.option(
+    "-cd", "--cache-dir",
+    type=click.Path(file_okay=False),
+    default="cached_segment_embeddings",
+    help=("Directory where segment embeddings will be cached, if necessary. "
+          "In particular, they will be cached only if you decided to freeze "
+          "all of the segment Transformer's weights.")
+)
 def main(
     path_to_pretrained_model_dir,
     path_to_segment_transformer,
     segment_transformer_inner_batch_size,
     document_embedder_type,
+    segment_transformer_encoder_attr_name,
     path_to_train_dataset_dir,
     path_to_eval_dataset_dir,
     path_to_document_embedder_config,
     path_to_training_arguments,
     epochs,
-    output_dir
+    output_dir,
+    cache_dir
 ):
     if path_to_pretrained_model_dir is not None:
         model, tokenizer = load_pretrained_model_and_tokenizer(
@@ -179,11 +197,12 @@ def main(
     )
     trainer = DocumentSimilarityTrainer(
         model,
-        "transformer",#"encoder",
-        train_dataset,
-        training_arguments,
-        eval_dataset,
-        output_dir=output_dir
+        segment_transformer_encoder_attr_name=segment_transformer_encoder_attr_name,
+        train_dataset=train_dataset,
+        training_arguments=training_arguments,
+        eval_dataset=eval_dataset,
+        output_dir=output_dir,
+        cache_dir=cache_dir
     )
     trainer.train(num_epochs=epochs)
 
