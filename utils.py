@@ -122,3 +122,10 @@ def ucid_to_int(ucid):
         characters
     ))
     return int("".join(encoded_characters))
+
+def unique_values_in_order_of_appearance(values):
+    unique_values = []
+    for v in values:
+        if v not in unique_values:
+            unique_values.append(v)
+    return unique_values

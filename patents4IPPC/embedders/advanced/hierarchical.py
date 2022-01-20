@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from pathlib import Path
 
 from transformers import AutoTokenizer
@@ -48,16 +49,27 @@ class HierarchicalTransformerEmbedder(BaseEmbedder):
             0, n_documents, batch_size, disable=(not show_progress)
         ):
             batch_end_idx = min(batch_start_idx + batch_size, n_documents)
-            encoded_segments, document_ids = \
+            documents_batch = OrderedDict({
+                f"Document_{i:04d}": segments
+                for i, segments in enumerate(
+                    segmented_texts[batch_start_idx:batch_end_idx]
+                )
+            })
+            encoded_segments, _ = \
                 utils.prepare_inputs_for_hierarchical_transformer(
-                    segmented_texts[batch_start_idx:batch_end_idx],
+                    documents_batch,
                     self.tokenizer,
                     self.model.segment_transformer.config.max_position_embeddings
-                )
+                )            
             encoded_segments = utils.move_encoded_inputs_to_device(
                 encoded_segments, self.device
             )
-            output = self.model(encoded_segments, document_ids)
+
+            document_ids_and_n_segments = {
+                doc_id: len(segments)
+                for doc_id, segments in documents_batch.items()
+            }
+            output = self.model(encoded_segments, document_ids_and_n_segments)
 
             embeddings_batch = (
                 output

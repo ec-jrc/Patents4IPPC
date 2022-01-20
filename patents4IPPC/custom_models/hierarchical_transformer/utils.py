@@ -1,4 +1,5 @@
 import math
+from collections import OrderedDict
 from functools import reduce
 from operator import add
 from typing import Dict, List
@@ -33,7 +34,7 @@ def move_encoded_inputs_to_device(encoded_inputs, device):
     return {k: v.to(device) for k, v in encoded_inputs.items()}
 
 def prepare_inputs_for_hierarchical_transformer(
-    documents: List[List[str]],
+    documents: OrderedDict,
     tokenizer: PreTrainedTokenizer,
     model_max_length: int
 ):
@@ -41,9 +42,9 @@ def prepare_inputs_for_hierarchical_transformer(
     consumption by a HierarchicalTransformer model.
 
     Args:
-        documents (List[List[str]]): List of documents, where each
-          document is a list of segments (sentences, paragraphs or
-          whatever).
+        documents (OrderedDict): Dictionary where keys are string IDs of 
+          documents and values are lists of segments (sentences, 
+          paragraphs or whatever).
         tokenizer (PreTrainedTokenizer): HuggingFace tokenizer for 
           tokenizing the segments.
         model_max_length (int): Maximum number of tokens that the 
@@ -55,7 +56,7 @@ def prepare_inputs_for_hierarchical_transformer(
           belongs to.
     """
 
-    segments = list(reduce(add, documents))
+    segments = list(reduce(add, documents.values()))
     encoded_segments = tokenizer(
         segments,
         padding="max_length",
@@ -64,8 +65,8 @@ def prepare_inputs_for_hierarchical_transformer(
         return_tensors="pt"        
     ).data
     document_ids = []
-    for i, document in enumerate(documents):
-        document_ids.extend([i] * len(document))
+    for doc_id, doc_segments in documents.items():
+        document_ids.extend([doc_id] * len(doc_segments))
 
     return encoded_segments, np.array(document_ids)
 

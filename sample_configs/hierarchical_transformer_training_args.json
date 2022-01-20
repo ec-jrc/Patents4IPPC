@@ -1,9 +1,9 @@
 {
   "learning_rate_for_document_embedder": 0.01,
-  "learning_rate_for_segment_transformer": 0.00005,
+  "learning_rate_for_segment_transformer": 0.005,
   "weight_decay": 0.0,
-  "batch_size": 8,
+  "batch_size": 2,
   "cosine_loss_margin": 0.4,
   "seed": 0,
-  "top_layers_to_train": 2
+  "top_layers_to_train": 0
 }

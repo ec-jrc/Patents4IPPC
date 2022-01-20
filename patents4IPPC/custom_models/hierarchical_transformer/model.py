@@ -1,7 +1,7 @@
-from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 import json
+from typing import Dict
 
 from transformers import AutoModel
 import numpy as np
@@ -44,20 +44,27 @@ class HierarchicalTransformer(torch.nn.Module):
         self.segment_transformer_inner_batch_size = \
             segment_transformer_inner_batch_size
 
-    def forward(self, encoded_inputs, document_ids: np.ndarray):
+    def forward(
+        self,
+        encoded_inputs,
+        document_ids_and_n_segments: Dict[str, int],
+        return_segment_embeddings=False
+    ):
         # `encoded_inputs` has shape (n_total_segments, segment_length),
         # where `n_total_segments` is the total number of segments in
-        # each document.
-        # `document_ids` has shape (n_total_segments,)
-        segment_embeddings = self._get_segment_embeddings(encoded_inputs)
+        # each document.        
+        segment_embeddings = self.get_segment_embeddings(encoded_inputs)
         # ^ (n_total_segments, embedding_size)
-        document_embeddings = self._get_document_embeddings(
-            segment_embeddings, document_ids
+        document_embeddings = self.get_document_embeddings(
+            segment_embeddings, document_ids_and_n_segments
         )
         # ^ (n_documents, embedding_size)
+
+        if return_segment_embeddings:
+            return segment_embeddings, document_embeddings
         return document_embeddings
 
-    def _get_segment_embeddings(self, encoded_inputs):
+    def get_segment_embeddings(self, encoded_inputs):
         token_embeddings = self._get_token_embeddings(encoded_inputs)
         # ^ (n_total_segments, segment_length, embedding_size)
         segment_embeddings = mean_pool_embeddings_with_attention_mask(
@@ -66,7 +73,7 @@ class HierarchicalTransformer(torch.nn.Module):
         # ^ (n_total_segments, embedding_size)
         return segment_embeddings        
 
-    def _get_document_embeddings(self, segment_embeddings, document_ids):
+    def get_document_embeddings(self, segment_embeddings, document_ids):
         batched_segment_embeddings, attention_mask = \
             self._separate_and_batch_segment_embeddings(
                 segment_embeddings, document_ids
@@ -118,17 +125,21 @@ class HierarchicalTransformer(torch.nn.Module):
         
         return batched_segment_embeddings, attention_mask
 
-    def _separate_segment_embeddings(self, segment_embeddings, document_ids):
-        n_segments_in_document = Counter(document_ids)
-        max_n_segments_in_document = max(n_segments_in_document.values())
+    def _separate_segment_embeddings(
+        self, segment_embeddings, document_ids_and_n_segments
+    ):
+        # n_segments_in_document = Counter(document_ids)
+        max_n_segments_in_document = max(
+            n_segments for _, n_segments in document_ids_and_n_segments
+        )
         padded_segment_embeddings = []
         attention_masks = []
-        for document_id in n_segments_in_document.keys():
+        last_index = 0
+        for _, n_segments in document_ids_and_n_segments:
             segment_embeddings_of_this_document = segment_embeddings[
-                document_ids == document_id
+                last_index:(last_index + n_segments)
             ]
-            amount_of_pad_needed = (max_n_segments_in_document
-                                    - n_segments_in_document[document_id])
+            amount_of_pad_needed = max_n_segments_in_document - n_segments
             padded_segment_embeddings_of_this_document = F.pad(
                 segment_embeddings_of_this_document,
                 (0, 0, 0, amount_of_pad_needed),
@@ -138,8 +149,10 @@ class HierarchicalTransformer(torch.nn.Module):
             padded_segment_embeddings.append(
                 padded_segment_embeddings_of_this_document
             )
-            attention_masks.append([1] * n_segments_in_document[document_id]
-                                   + [0] * amount_of_pad_needed)
+            attention_masks.append(
+                [1] * n_segments + [0] * amount_of_pad_needed
+            )
+            last_index += n_segments
 
         return padded_segment_embeddings, attention_masks
 

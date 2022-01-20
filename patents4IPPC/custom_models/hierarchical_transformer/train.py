@@ -1,3 +1,4 @@
+from collections import Counter
 from dataclasses import dataclass, asdict
 from pathlib import Path
 import json
@@ -8,7 +9,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from .utils import concat_encoded_inputs, move_encoded_inputs_to_device
+from .utils import (
+    concat_encoded_inputs, index_encoded_inputs, move_encoded_inputs_to_device
+)
+from utils import unique_values_in_order_of_appearance
 
 
 @dataclass
@@ -35,7 +39,8 @@ class DocumentSimilarityTrainer:
         train_dataset,
         training_arguments,
         eval_dataset=None,
-        output_dir=None
+        output_dir=None,
+        cache_dir="cached_segment_embeddings"
     ):
         self.model = model
         self.segment_transformer_encoder_attr_name = \
@@ -44,6 +49,10 @@ class DocumentSimilarityTrainer:
         self.training_arguments = training_arguments
         self.eval_dataset = eval_dataset
         self.output_dir = Path(output_dir) if output_dir is not None else None
+        self.cache_dir = Path(cache_dir)
+
+        if training_arguments.top_layers_to_train == 0:
+            self._create_cache_dirs_for_segment_embeddings()
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -57,6 +66,14 @@ class DocumentSimilarityTrainer:
         )
         self._initialize_optimizer()
         self._initialize_data_loaders()
+
+    def _create_cache_dirs_for_segment_embeddings(self):
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_dir_train = self.cache_dir / "train"
+        self.cache_dir_train.mkdir(exist_ok=True)
+        if self._is_evaluation_needed():
+            self.cache_dir_eval = self.cache_dir / "eval"
+            self.cache_dir_eval.mkdir(exist_ok=True)
 
     def _initialize_optimizer(self):
         document_embedder_params_spec = {
@@ -76,9 +93,9 @@ class DocumentSimilarityTrainer:
         torch.manual_seed(self.training_arguments.seed)
         def collate_fn(list_of_samples):
             LEFT_ENCODED_SEGMENTS = 0
-            LEFT_DOCUMENT_IDS = 1
+            LEFT_DOCUMENT_ID_AND_N_SEGMENTS = 1
             RIGHT_ENCODED_SEGMENTS = 2
-            RIGHT_DOCUMENT_IDS = 3
+            RIGHT_DOCUMENT_ID_AND_N_SEGMENTS = 3
             LABELS = 4
             collated_samples = [
                 move_encoded_inputs_to_device(
@@ -88,9 +105,10 @@ class DocumentSimilarityTrainer:
                     ]),
                     self.device
                 ),
-                np.concatenate([
-                    sample[LEFT_DOCUMENT_IDS] for sample in list_of_samples
-                ]),
+                [
+                    sample[LEFT_DOCUMENT_ID_AND_N_SEGMENTS]
+                    for sample in list_of_samples
+                ],
                 move_encoded_inputs_to_device(
                     concat_encoded_inputs([
                         sample[RIGHT_ENCODED_SEGMENTS]
@@ -98,9 +116,10 @@ class DocumentSimilarityTrainer:
                     ]),
                     self.device
                 ),
-                np.concatenate([
-                    sample[RIGHT_DOCUMENT_IDS] for sample in list_of_samples
-                ]),
+                [
+                    sample[RIGHT_DOCUMENT_ID_AND_N_SEGMENTS]
+                    for sample in list_of_samples
+                ],
                 torch.tensor([
                     sample[LABELS] for sample in list_of_samples
                 ], device=self.device)
@@ -177,10 +196,6 @@ class DocumentSimilarityTrainer:
         return self.eval_dataset is not None
 
     def train(self, num_epochs):
-        # TODO: In principle, if the user chose to freeze all of the 
-        # segment transformer's weights, it wouldn't make sense to 
-        # compute sentence embeddings from scratch at each epoch, 
-        # therefore we should cache them somehow.
         for epoch in range(1, num_epochs + 1):
             print(f"Epoch {epoch}/{num_epochs}")
             train_loss = self._run_single_epoch_of_training()
@@ -217,13 +232,16 @@ class DocumentSimilarityTrainer:
     @torch.no_grad()
     def _eval(self):
         self.model.eval()  # Set model to evaluation mode
+        cache_dir = getattr(self, "cache_dir_eval", None)       
         eval_loss = np.mean([
-            self._compute_loss(batch).item()
+            self._compute_loss(batch, cache_dir).item()
             for batch in tqdm(
-                self.eval_data_loader, desc="Eval loss computation", leave=False
+                self.eval_data_loader,
+                desc="Eval loss computation",
+                leave=False
             )
         ])
-        return eval_loss            
+        return eval_loss
 
     def _update_eval_loss_history(self, eval_loss):
         self.eval_loss_history.append(eval_loss)
@@ -253,25 +271,28 @@ class DocumentSimilarityTrainer:
         history.to_csv(str(self.output_dir / "loss_history.csv"), index=False)
 
     def _run_single_training_step(self, batch):
-        loss = self._compute_loss(batch)
+        cache_dir = getattr(self, "cache_dir_train", None)
+        loss = self._compute_loss(batch, cache_dir)
         self._adjust_learning_rate_based_on_total_number_of_segments(batch)
         self._backpropagate_gradients(loss)
         self._restore_learning_rate()
         return loss.item()
 
-    def _compute_loss(self, batch):
-        # Make sense of the batch
-        left_encoded_segments_batch, left_document_ids_batch = batch[0:2]
-        right_encoded_segments_batch, right_document_ids_batch = batch[2:4]
-        labels = batch[-1]
+    def _compute_loss(self, batch, cache_dir=None):
+        left_encoded_segments_batch = batch[0]
+        left_documents_ids_and_n_segments_batch = batch[1]
+        right_encoded_segments_batch = batch[2]
+        right_documents_ids_and_n_segments_batch = batch[3]
+        labels = batch[4]
         
-        # Get document embeddings
-        left_document_embeddings_batch = self.model(
-            left_encoded_segments_batch, left_document_ids_batch
-        )
-        right_document_embeddings_batch = self.model(
-            right_encoded_segments_batch, right_document_ids_batch
-        )
+        left_document_embeddings_batch, right_document_embeddings_batch = \
+            self._get_document_embeddings(
+                left_encoded_segments_batch,
+                left_documents_ids_and_n_segments_batch,
+                right_encoded_segments_batch,
+                right_documents_ids_and_n_segments_batch,
+                cache_dir
+            )
 
         return self.loss_fn(
             left_document_embeddings_batch,
@@ -303,12 +324,146 @@ class DocumentSimilarityTrainer:
             param_group["lr"] = \
                 self.training_arguments.learning_rate_for_segment_transformer
 
+    def _get_document_embeddings(
+        self,
+        left_encoded_segments,
+        left_documents_ids_and_n_segments,
+        right_encoded_segments,
+        right_documents_ids_and_n_segments,
+        cache_dir        
+    ):
+        left_segment_embeddings = self._get_segment_embeddings(
+            left_encoded_segments,
+            left_documents_ids_and_n_segments,
+            cache_dir
+        )
+
+        right_segment_embeddings = self._get_segment_embeddings(
+            right_encoded_segments,
+            right_documents_ids_and_n_segments,
+            cache_dir
+        )
+
+        left_document_embeddings = self.model.get_document_embeddings(
+            left_segment_embeddings, left_documents_ids_and_n_segments
+        )
+
+        right_document_embeddings = self.model.get_document_embeddings(
+            right_segment_embeddings, right_documents_ids_and_n_segments
+        )
+
+        return left_document_embeddings, right_document_embeddings
+
+    def _get_segment_embeddings(
+        self, encoded_segments, document_ids_and_n_segments, cache_dir=None
+    ):
+        if cache_dir is None:
+            return self.model.get_segment_embeddings(encoded_segments)          
+        
+        cached_segment_embeddings = self._get_cached_segment_embeddings(
+            document_ids_and_n_segments, cache_dir
+        )
+
+        non_cached_segment_embeddings = \
+            self._get_non_cached_segment_embeddings_then_cache_them(
+                encoded_segments, document_ids_and_n_segments, cache_dir
+            )
+        
+        all_segment_embeddings = {
+            **cached_segment_embeddings,
+            **non_cached_segment_embeddings
+        }
+        return torch.concat([
+            all_segment_embeddings[doc_id]
+            for doc_id, _ in document_ids_and_n_segments
+        ])
+
+    def _get_cached_segment_embeddings(
+        self, document_ids_and_n_segments, cache_dir
+    ):
+        def is_document_cached(document_id):
+            return (cache_dir is not None
+                    and (cache_dir / f"{document_id}.npy").exists())        
+        
+        cached_documents_ids_and_n_segments = filter(
+            lambda tup: is_document_cached(tup[0]),
+            document_ids_and_n_segments
+        )
+        # Load cached segment embeddings
+        cached_segment_embeddings = self._load_cached_segment_embeddings(
+            cache_dir, cached_documents_ids_and_n_segments
+        )
+
+        return cached_segment_embeddings
+
+    def _get_non_cached_segment_embeddings_then_cache_them(
+        self, encoded_segments, document_ids_and_n_segments, cache_dir
+    ):
+        def is_document_cached(document_id):
+            return (cache_dir is not None
+                    and (cache_dir / f"{document_id}.npy").exists())        
+        
+        cached_segments_mask = np.array([
+            is_document_cached(doc_id)
+            for doc_id, n_segments in document_ids_and_n_segments
+            for _ in range(n_segments)
+        ])
+        if all(cached_segments_mask):
+            # No need to compute anything because all segment embeddings 
+            # were previously cached
+            non_cached_segment_embeddings = {}
+        else:
+            # Compute segment embeddings for non-cached documents
+            encoded_segments_of_non_cached_documents = index_encoded_inputs(
+                encoded_segments, ~cached_segments_mask
+            )
+            non_cached_segment_embeddings_stacked = \
+                self.model.get_segment_embeddings(
+                    encoded_segments_of_non_cached_documents
+                )
+            # Organize them in a dictionary
+            non_cached_documents_ids_and_n_segments = filter(
+                lambda tup: not is_document_cached(tup[0]),
+                document_ids_and_n_segments
+            )
+            non_cached_segment_embeddings = {}
+            last_index = 0
+            for doc_id, n_segments in non_cached_documents_ids_and_n_segments:
+                non_cached_segment_embeddings[doc_id] = \
+                    non_cached_segment_embeddings_stacked[
+                        last_index:last_index+n_segments
+                    ]
+                last_index += n_segments
+            # Cache them
+            self._cache_segment_embeddings(
+                cache_dir, non_cached_segment_embeddings
+            )
+        
+        return non_cached_segment_embeddings
+
     def _save_model_if_better_than_previous_ones(self):
         if len(self.eval_loss_history) == 0:
             if self.train_loss_history[-1] == self.best_train_loss:
                 self._save_model_and_tokenizer()
         elif self.eval_loss_history[-1] == self.best_eval_loss:
             self._save_model_and_tokenizer()
+
+    def _load_cached_segment_embeddings(
+        self, cache_dir, cached_documents_ids_and_n_segments
+    ):
+        cached_segment_embeddings = {
+            document_id: torch.tensor(
+                np.load(str(cache_dir / f"{document_id}.npy")),
+                device=self.device
+            )
+            for document_id, _ in cached_documents_ids_and_n_segments
+        }
+        return cached_segment_embeddings
+
+    def _cache_segment_embeddings(self, cache_dir, segment_embeddings):
+        for document_id, tensor in segment_embeddings.items():
+            output_path = cache_dir / f"{document_id}.npy"
+            np.save(str(output_path), tensor.detach().cpu().numpy())
 
     def _save_model_and_tokenizer(self):
         self.output_dir.mkdir(parents=True, exist_ok=True)

@@ -179,7 +179,7 @@ def main(
     )
     trainer = DocumentSimilarityTrainer(
         model,
-        "encoder",
+        "transformer",#"encoder",
         train_dataset,
         training_arguments,
         eval_dataset,
