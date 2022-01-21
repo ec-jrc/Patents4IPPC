@@ -32,8 +32,10 @@ def clean_abstract(abstract):
     return abstract
 
 def handle_newlines_and_whitespaces(text, one_line_one_segment=False):
-    replacement_for_newlines = '[SEGMENT_SEP]' if one_line_one_segment else ' '
+    # Remove leading and trailing spaces/newlines/tabs
+    text = re.sub(r'^\s*(.*?)\s*$', lambda match: match.groups()[0], text)
     # Remove newlines (as well as any preceding or following whitespaces)
+    replacement_for_newlines = '[SEGMENT_SEP]' if one_line_one_segment else ' '
     text = re.sub(r'(\s*\n\s*)+', replacement_for_newlines, text)
     # Normalize whitespace characters
     text = re.sub(r'\s', ' ', text)
