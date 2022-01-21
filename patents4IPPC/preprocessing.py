@@ -31,9 +31,10 @@ def clean_abstract(abstract):
     abstract = re.sub(r'COPYRIGHT:\s*.*', '', abstract)
     return abstract
 
-def handle_newlines_and_whitespaces(text):
+def handle_newlines_and_whitespaces(text, one_line_one_segment):
+    replacement_for_newlines = '[SEGMENT_SEP]' if one_line_one_segment else ' '
     # Remove newlines
-    text = re.sub(r'\n', ' ', text)
+    text = re.sub(r'\n+', replacement_for_newlines, text)
     # Normalize whitespace characters
     text = re.sub(r'\s', ' ', text)
     # Collapse multiple whitespaces
@@ -81,7 +82,9 @@ def expand_acronyms(text, acronyms_map):
         )
     return text
 
-def clean_bref_passage(bref_passage, acronyms_map=None):
+def clean_bref_passage(
+    bref_passage, acronyms_map=None, one_line_one_segment=False
+):
     # Remove section title
     bref_passage = re.sub(r'^(\d+\s*\.)+\d+\s+.+\n', '', bref_passage)
     # Remove description header
@@ -107,7 +110,9 @@ def clean_bref_passage(bref_passage, acronyms_map=None):
     # Remove bullet points
     bref_passage = re.sub('•', '', bref_passage)
     # Deal with newlines and whitespaces
-    bref_passage = handle_newlines_and_whitespaces(bref_passage)
+    bref_passage = handle_newlines_and_whitespaces(
+        bref_passage, one_line_one_segment
+    )
     if acronyms_map is not None:
         # Expand acronyms
         bref_passage = expand_acronyms(bref_passage, acronyms_map)

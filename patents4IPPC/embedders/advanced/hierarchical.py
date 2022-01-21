@@ -41,8 +41,9 @@ class HierarchicalTransformerEmbedder(BaseEmbedder):
             documents if not do_lowercase else list(map(str.lower, documents))
         )
         # NOTE: We assume each document to be pre-segmented and that 
-        # the segments are separated by tab ("\t") characters.
-        segmented_texts = [text.split("\t") for text in texts]
+        # the segments are separated by a special sequence of 
+        # characters, namely "[SEGMENT_SEP]".
+        segmented_texts = [text.split("[SEGMENT_SEP]") for text in texts]
         n_documents = len(texts)
         embeddings = []
         for batch_start_idx in trange(

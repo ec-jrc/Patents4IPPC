@@ -19,7 +19,7 @@ from patents4IPPC.embedders.utils import get_embedder
 )
 @click.option(
     '-mc', '--model-checkpoint', 'path_to_model_checkpoint',
-    type=click.Path(exists=True),
+    type=click.Path(),
     required=True,
     help='Path to a pre-trained model.'
 )

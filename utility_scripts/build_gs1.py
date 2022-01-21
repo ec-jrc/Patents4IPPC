@@ -52,6 +52,14 @@ from patents4IPPC import preprocessing
     help='Merge patent titles with their abstract.'
 )
 @click.option(
+    '-s', '--segment-bref-passages',
+    is_flag=True,
+    help=('Separate BREF passages into individual segments, where one '
+          'line corresponds to one segment. The segments will be '
+          'separated from each other by a special sequence of '
+          'characters ("[SEGMENT_SEP]").')
+)
+@click.option(
     '-o', '--output-path',
     type=click.Path(exists=False),
     required=True,
@@ -65,6 +73,7 @@ def main(
     expand_acronyms_in_filenames,
     do_preprocess,
     use_titles,
+    segment_bref_passages,
     output_path
 ):
     # Read the PatStat corpus
@@ -95,7 +104,8 @@ def main(
         re.sub(r'[^a-z]', '', file_.name.lower()): 
             preprocessing.clean_bref_passage(
                 bref_passage=file_.read_text(encoding='utf-8-sig'),
-                acronyms_map=acronyms_maps.get(file_.parent.name, None)
+                acronyms_map=acronyms_maps.get(file_.parent.name, None),
+                one_line_one_segment=segment_bref_passages
             )
         for file_ in Path(path_to_bref_passages_dir).glob('**/*.txt')
     }
