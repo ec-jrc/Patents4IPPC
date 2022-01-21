@@ -31,7 +31,7 @@ def clean_abstract(abstract):
     abstract = re.sub(r'COPYRIGHT:\s*.*', '', abstract)
     return abstract
 
-def handle_newlines_and_whitespaces(text, one_line_one_segment):
+def handle_newlines_and_whitespaces(text, one_line_one_segment=False):
     replacement_for_newlines = '[SEGMENT_SEP]' if one_line_one_segment else ' '
     # Remove newlines
     text = re.sub(r'\n+', replacement_for_newlines, text)
