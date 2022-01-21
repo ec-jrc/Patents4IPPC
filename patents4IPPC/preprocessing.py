@@ -33,8 +33,8 @@ def clean_abstract(abstract):
 
 def handle_newlines_and_whitespaces(text, one_line_one_segment=False):
     replacement_for_newlines = '[SEGMENT_SEP]' if one_line_one_segment else ' '
-    # Remove newlines
-    text = re.sub(r'\n+', replacement_for_newlines, text)
+    # Remove newlines (as well as any preceding or following whitespaces)
+    text = re.sub(r'(\s*\n\s*)+', replacement_for_newlines, text)
     # Normalize whitespace characters
     text = re.sub(r'\s', ' ', text)
     # Collapse multiple whitespaces
