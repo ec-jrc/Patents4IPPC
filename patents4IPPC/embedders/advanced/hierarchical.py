@@ -67,10 +67,10 @@ class HierarchicalTransformerEmbedder(BaseEmbedder):
                 encoded_segments, self.device
             )
 
-            document_ids_and_n_segments = {
-                doc_id: len(segments)
+            document_ids_and_n_segments = [
+                (doc_id, len(segments))
                 for doc_id, segments in documents_batch.items()
-            }
+            ]
             output = self.model(encoded_segments, document_ids_and_n_segments)
 
             embeddings_batch = (

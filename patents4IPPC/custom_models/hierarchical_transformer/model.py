@@ -1,7 +1,7 @@
 from dataclasses import asdict
 from pathlib import Path
 import json
-from typing import Dict
+from typing import List, Tuple
 
 from transformers import AutoModel
 import numpy as np
@@ -47,7 +47,7 @@ class HierarchicalTransformer(torch.nn.Module):
     def forward(
         self,
         encoded_inputs,
-        document_ids_and_n_segments: Dict[str, int],
+        document_ids_and_n_segments: List[Tuple[str, int]],
         return_segment_embeddings=False
     ):
         # `encoded_inputs` has shape (n_total_segments, segment_length),
@@ -73,10 +73,10 @@ class HierarchicalTransformer(torch.nn.Module):
         # ^ (n_total_segments, embedding_size)
         return segment_embeddings        
 
-    def get_document_embeddings(self, segment_embeddings, document_ids):
+    def get_document_embeddings(self, segment_embeddings, document_ids_and_n_segments):
         batched_segment_embeddings, attention_mask = \
             self._separate_and_batch_segment_embeddings(
-                segment_embeddings, document_ids
+                segment_embeddings, document_ids_and_n_segments
             )
         # ^ `batched_segment_embeddings` has shape (n_documents, n_segments, embedding_size)
         # ^ `attention_mask` has shape (n_documents, n_segments)
@@ -113,10 +113,12 @@ class HierarchicalTransformer(torch.nn.Module):
         return token_embeddings
 
     def _separate_and_batch_segment_embeddings(
-        self, segment_embeddings, document_ids
+        self, segment_embeddings, document_ids_and_n_segments
     ):
         separated_segment_embeddings, attention_masks = \
-            self._separate_segment_embeddings(segment_embeddings, document_ids)
+            self._separate_segment_embeddings(
+                segment_embeddings, document_ids_and_n_segments
+            )
 
         batched_segment_embeddings, attention_mask = \
             self._batch_segment_embeddings(
@@ -128,7 +130,6 @@ class HierarchicalTransformer(torch.nn.Module):
     def _separate_segment_embeddings(
         self, segment_embeddings, document_ids_and_n_segments
     ):
-        # n_segments_in_document = Counter(document_ids)
         max_n_segments_in_document = max(
             n_segments for _, n_segments in document_ids_and_n_segments
         )
