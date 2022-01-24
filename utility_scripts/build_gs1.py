@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-import re
 
 import pandas as pd
 import click
@@ -101,7 +100,7 @@ def main(
 
     # Read and clean BREF passages
     bref_passages = {
-        re.sub(r'[^a-z]', '', file_.name.lower()): 
+        f'{file_.parent.name}:::{file_.name}':
             preprocessing.clean_bref_passage(
                 bref_passage=file_.read_text(encoding='utf-8-sig'),
                 acronyms_map=acronyms_maps.get(file_.parent.name, None),
@@ -140,13 +139,12 @@ def main(
 
     # Extract the content of the queries
     def transform_query_title(title):
-        query_fname = re.sub(r'([a-zA-Z]+):+', '', title)
-        if expand_acronyms_in_filenames:
-            query_origin = re.sub(r'([a-zA-Z]+):.*', lambda m: m[1], title)
+        query_origin, query_fname = title.split(':::')
+        if expand_acronyms_in_filenames:            
             query_fname = preprocessing.expand_acronyms(
                 query_fname, acronyms_maps.get(query_origin, {})
             )
-        return re.sub(r'[^a-z]', '', query_fname.lower())
+        return f'{query_origin}:::{query_fname}'      
 
     df_qrels['bref_passage'] = (
         df_qrels['Query title']
