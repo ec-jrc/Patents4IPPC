@@ -34,6 +34,7 @@ class HierarchicalTransformerEmbedder(BaseEmbedder):
     def embedding_size(self):
         return self.model.document_embedder.embedding_size
 
+    @torch.no_grad()
     def embed_documents(
         self, documents, batch_size=64, do_lowercase=False, show_progress=False
     ):
