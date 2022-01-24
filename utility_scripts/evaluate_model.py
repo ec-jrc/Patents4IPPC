@@ -13,7 +13,7 @@ from patents4IPPC.embedders.utils import get_embedder
 @click.command()
 @click.option(
     '-mt', '--model-type',
-    type=click.Choice(['tfidf', 'glove', 'use', 'huggingface', 'dual']),
+    type=click.Choice(['tfidf', 'glove', 'use', 'huggingface', 'dual', 'hierarchical']),
     required=True,
     help='Type of model to use for indexing the responses.'
 )
