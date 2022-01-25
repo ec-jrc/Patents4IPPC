@@ -44,12 +44,19 @@ from patents4IPPC.embedders.utils import get_embedder
     help=('Path to a pickled dictionary containing pre-computed embeddings '
           'for the responses in the dataset. Required if --model-type="dual".')
 )
+@click.option(
+    '-o', '--output-path',
+    type=click.Path(),
+    default=None,
+    help='Path to a file where predictions will be saved (in CSV format).'
+)
 def main(
     model_type,
     path_to_model_checkpoint,
     path_to_dataset,
     batch_size,
-    path_to_response_embeddings
+    path_to_response_embeddings,
+    output_path
 ):
     if model_type == 'dual':
         assert path_to_response_embeddings is not None, \
@@ -81,6 +88,10 @@ def main(
     print('NDCG score on {}: {:.3f} (± {:.3f})'.format(
         dataset_name, ndcg_score_mean, ndcg_score_std
     ))
+
+    if output_path is not None:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        df_cosine_scores.to_csv(output_path, index=False)
 
 if __name__ == '__main__':
     main() # pylint: disable=no-value-for-parameter
