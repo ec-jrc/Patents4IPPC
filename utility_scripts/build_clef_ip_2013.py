@@ -88,15 +88,18 @@ def get_text_from_tag(tag: ET.Element):
 
     return final_text.strip()
 
-def extract_content_from_patent(patent_file, output_path, add_section_tags=False):
+def extract_content_from_patent(patent_file: Path, add_section_tags=False):
     xml_document_root = ET.parse(patent_file)
     abstract = xml_document_root.find(".//abstract[@lang='EN']")
     claims = xml_document_root.findall(".//claims[@lang='EN']/claim")
     
     abstract_text = get_text_from_tag(abstract) if abstract is not None else ""
-    if patent_file.stem.startswith("EP"):  # EPO patent
+    
+    if patent_file.stem.startswith("EP"):
+        # ^ EPO patent
         claims_texts = [get_text_from_tag(claim) for claim in claims]
-    else:  # WO patent
+    else:
+        # ^ WO patent
         assert len(claims) == 1  
         # ^ WO patents contain only one <claim> tag that contains all of
         # the claims
@@ -112,13 +115,67 @@ def extract_content_from_patent(patent_file, output_path, add_section_tags=False
             if re.search(r"^\d{1,2}\.\s*", raw_text)
         ]
     
-    output_path.parent.mkdir(exist_ok=True, parents=True)
-    with open(output_path, "w") as fp:
-        fp.write(("[abstract] " if add_section_tags else "") + abstract_text + "\n")
-        fp.writelines("\n".join([
-            ("[claim] " if add_section_tags else "") + claim_text
+    if add_section_tags:
+        abstract_text = f"[abstract] {abstract_text}"
+        claims_texts = [
+            f"[claim] {claim_text}"
             for claim_text in claims_texts
-        ]))
+        ]
+
+    return abstract_text, claims_texts
+
+def make_dataset(
+    subset, qrels, qrels_dir, output_dir, as_csv_files, add_section_tags
+):
+    for _, row in qrels.iterrows():
+        q_patent_ucid = row["patent_ucid"]
+        q_patent_file = qrels_dir / "patents" / f"{q_patent_ucid}.xml"        
+        
+        rel_patent_ucid = row["rel_patent_ucid"]
+        rel_patent_file = qrels_dir / "patents" / f"{rel_patent_ucid}.xml"        
+
+        label = row["label"]
+
+        q_patent_abstract, q_patent_claims = extract_content_from_patent(
+            q_patent_file, add_section_tags
+        )
+        rel_patent_abstract, rel_patent_claims = extract_content_from_patent(
+            rel_patent_file, add_section_tags
+        )        
+
+        if as_csv_files:
+            qrels_output_path = output_dir / f"clefip2013_{subset}.csv"
+            if not qrels_output_path.exists():
+                qrels_output_path.write_text(
+                    "query_id,query,response_id,response,label\n"
+                )
+            with open(qrels_output_path, mode="a") as fp:
+                q_patent_fused_content = " ".join(
+                    [q_patent_abstract] + q_patent_claims
+                )
+                rel_patent_fused_content = " ".join(
+                    [rel_patent_abstract] + rel_patent_claims
+                )
+                fp.write(",".join([
+                    q_patent_ucid,
+                    q_patent_fused_content,
+                    rel_patent_ucid,
+                    rel_patent_fused_content,
+                    str(label)
+                ]) + "\n")
+        else:
+            q_patent_output_path = \
+                output_dir / subset / "qs" / f"{q_patent_ucid}.dat"
+            rel_patent_output_path = \
+                output_dir / subset / "rels" / f"{rel_patent_ucid}.dat"
+            qrels_output_path = output_dir / subset / "qrels.txt"
+
+            with open(q_patent_output_path, "w") as fp:
+                fp.writelines("\n".join([q_patent_abstract] + q_patent_claims))
+            with open(rel_patent_output_path, "w") as fp:
+                fp.writelines("\n".join([rel_patent_abstract] + rel_patent_claims))
+            with open(qrels_output_path, "a+") as fp:                
+                fp.write(f"qs/{q_patent_ucid}.dat,rels/{rel_patent_ucid}.dat,{label}\n")
 
 
 @click.command()
@@ -135,63 +192,45 @@ def extract_content_from_patent(patent_file, output_path, add_section_tags=False
     help="Directory where the dataset will be saved."
 )
 @click.option(
+    "-f", "--as-csv-files",
+    type=bool,
+    is_flag=True,
+    help=("Save train and test dataset as CSV files with \"standard\" column "
+          "names. This will be convenient for training models other than a "
+          "Hierarchical Transformer.")
+)
+@click.option(
     "-s", "--add-section-tags",
     type=bool,
     is_flag=True,
     help=("Whether to add section tags based on which section a given piece "
           "of text was taken from. Useful for BERT for Patents.")
 )
-def main(path_to_qrels_dir, path_to_output_dir, add_section_tags):
+def main(path_to_qrels_dir, path_to_output_dir, as_csv_files, add_section_tags):
     qrels_dir = Path(path_to_qrels_dir)
     train_qrels = pd.read_csv(str(qrels_dir / "train_qrels.csv"))
     test_qrels = pd.read_csv(str(qrels_dir / "test_qrels.csv"))
 
     output_dir = Path(path_to_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Train set
-    for _, row in train_qrels.iterrows():
-        q_patent_ucid = row["patent_ucid"]
-        q_patent_file = qrels_dir / "patents" / f"{q_patent_ucid}.xml"        
-        extract_content_from_patent(
-            q_patent_file,
-            output_dir / "train" / "qs" / f"{q_patent_ucid}.dat",
-            add_section_tags=add_section_tags
-        )
+    make_dataset(
+        subset="train",
+        qrels=train_qrels,
+        qrels_dir=qrels_dir,
+        output_dir=output_dir,
+        as_csv_files=as_csv_files,
+        add_section_tags=add_section_tags
+    )
 
-        rel_patent_ucid = row["rel_patent_ucid"]
-        rel_patent_file = qrels_dir / "patents" / f"{rel_patent_ucid}.xml"
-        extract_content_from_patent(
-            rel_patent_file,
-            output_dir / "train" / "rels" / f"{rel_patent_ucid}.dat",
-            add_section_tags=add_section_tags
-        )
-
-        with open(str(output_dir / "train" / "qrels.txt"), "a+") as fp:
-            label = row["label"]
-            fp.write(f"qs/{q_patent_ucid}.dat,rels/{rel_patent_ucid}.dat,{label}\n")
-    
-
-    # Test set
-    for _, row in test_qrels.iterrows():
-        q_patent_ucid = row["patent_ucid"]
-        q_patent_file = qrels_dir / "patents" / f"{q_patent_ucid}.xml"        
-        extract_content_from_patent(
-            q_patent_file,
-            output_dir / "test" / "qs" / f"{q_patent_ucid}.dat",
-            add_section_tags=add_section_tags
-        )
-
-        rel_patent_ucid = row["rel_patent_ucid"]
-        rel_patent_file = qrels_dir / "patents" / f"{rel_patent_ucid}.xml"
-        extract_content_from_patent(
-            rel_patent_file,
-            output_dir / "test" / "rels" / f"{rel_patent_ucid}.dat",
-            add_section_tags=add_section_tags
-        )
-
-        with open(str(output_dir / "test" / "qrels.txt"), "a+") as fp:
-            label = row["label"]
-            fp.write(f"qs/{q_patent_ucid}.dat,rels/{rel_patent_ucid}.dat,{label}\n")
+    make_dataset(
+        subset="test",
+        qrels=test_qrels,
+        qrels_dir=qrels_dir,
+        output_dir=output_dir,
+        as_csv_files=as_csv_files,
+        add_section_tags=add_section_tags
+    )
 
 if __name__ == "__main__":
     main() # pylint: disable=no-value-for-parameter
