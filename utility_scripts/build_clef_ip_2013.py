@@ -1,8 +1,5 @@
-from functools import reduce
 from pathlib import Path
-import random
 import re
-import shutil
 import xml.etree.ElementTree as ET
 
 import click
@@ -144,7 +141,7 @@ def make_dataset(
         )        
 
         if as_csv_files:
-            qrels_output_path = output_dir / f"clefip2013_{subset}.csv"
+            qrels_output_path = output_dir / f"{subset}.csv"
             if not qrels_output_path.exists():
                 qrels_output_path.write_text(
                     "query_id,query,response_id,response,label\n"
@@ -169,6 +166,10 @@ def make_dataset(
             rel_patent_output_path = \
                 output_dir / subset / "rels" / f"{rel_patent_ucid}.dat"
             qrels_output_path = output_dir / subset / "qrels.txt"
+
+            q_patent_output_path.parent.mkdir(parents=True, exist_ok=True)
+            rel_patent_output_path.parent.mkdir(parents=True, exist_ok=True)
+            qrels_output_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(q_patent_output_path, "w") as fp:
                 fp.writelines("\n".join([q_patent_abstract] + q_patent_claims))
