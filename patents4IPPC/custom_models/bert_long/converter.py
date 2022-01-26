@@ -98,8 +98,7 @@ class BertLongConverter:
             torch.arange(self.max_position_embeddings).unsqueeze(0)
 
     def _replace_attention_layers(self):
-        self.config.attention_window = ([self.attention_window]
-                                        * self.config.num_hidden_layers)
+        self.config.attention_window = self.attention_window
         for i, layer in enumerate(
             getattr(self.model, "bert", self.model).encoder.layer
         ):

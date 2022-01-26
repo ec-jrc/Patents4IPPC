@@ -1,4 +1,4 @@
-from transformers import BertTokenizer, BertTokenizerFast
+from transformers import AutoConfig, BertTokenizer, BertTokenizerFast
 
 
 def _pad_to_multiple_of_attention_window(self, *args, **kwargs):
@@ -23,6 +23,19 @@ class BertLongTokenizer(BertTokenizer):
         super().__init__(*args, **kwargs)
         self.attention_window = attention_window
 
+    @classmethod
+    def from_pretrained(
+        cls, pretrained_model_name_or_path, *init_inputs, **kwargs
+    ):
+        config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+        attention_window = getattr(config, "attention_window", 512)
+        return super(BertLongTokenizer, cls).from_pretrained(
+            pretrained_model_name_or_path,
+            *init_inputs,
+            attention_window=attention_window,
+            **kwargs
+        )
+
     def __call__(self, *args, **kwargs):
         return _pad_to_multiple_of_attention_window(self, *args, **kwargs)
 
@@ -33,6 +46,19 @@ class BertLongTokenizerFast(BertTokenizerFast):
     def __init__(self, *args, attention_window=512, **kwargs):
         super().__init__(*args, **kwargs)
         self.attention_window = attention_window
+
+    @classmethod
+    def from_pretrained(
+        cls, pretrained_model_name_or_path, *init_inputs, **kwargs
+    ):
+        config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+        attention_window = getattr(config, "attention_window", 512)
+        return super(BertLongTokenizerFast, cls).from_pretrained(
+            pretrained_model_name_or_path,
+            *init_inputs,
+            attention_window=attention_window,
+            **kwargs
+        )
 
     def __call__(self, *args, **kwargs):
         return _pad_to_multiple_of_attention_window(self, *args, **kwargs)
