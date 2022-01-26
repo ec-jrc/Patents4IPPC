@@ -83,15 +83,18 @@ class BertLongConverter:
     ):
         # Copy position embeddings over and over to initialize the new
         # position embeddings
-        k = 0
+        start_idx = 0
         step = self.current_max_position_embeddings
-        while k < self.max_position_embeddings:
-            extended_position_embeddings[k:(k + step)] = \
-                getattr(self.model, "bert", self.model).embeddings.position_embeddings.weight
-            k += step
-        getattr(self.model, "bert", self.model).embeddings.position_embeddings.weight.data = \
+        bert_model = getattr(self.model, "bert", self.model)
+        while start_idx < self.max_position_embeddings:
+            actual_step = min(self.max_position_embeddings - start_idx, step)
+            end_idx = start_idx + actual_step
+            extended_position_embeddings[start_idx:end_idx] = \
+                bert_model.embeddings.position_embeddings.weight[:actual_step]
+            start_idx = end_idx
+        bert_model.embeddings.position_embeddings.weight.data = \
             extended_position_embeddings
-        getattr(self.model, "bert", self.model).embeddings.position_ids.data = \
+        bert_model.embeddings.position_ids.data = \
             torch.arange(self.max_position_embeddings).unsqueeze(0)
 
     def _replace_attention_layers(self):
