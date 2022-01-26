@@ -22,7 +22,6 @@ def sentence_transformers_finetuning(
     output_path,
     learning_rate=2e-5,
     weight_decay=0.01,
-    cosine_loss_margin=0.4,
     is_sbert_model=False,
     seed=0
 ):
@@ -51,9 +50,6 @@ def sentence_transformers_finetuning(
           fine-tuning. Defaults to 2e-5.
         weight_decay (float, optional): Weight decay coefficient to use 
           for regularization. Defaults to 0.01.
-        cosine_loss_margin (float, optional): `margin` parameter to pass 
-          to PyTorch's `CosineEmbeddingLoss`. Ignored unless 
-          loss="cosine". Defaults to 0.4.
         is_sbert_model (bool, optional): Whether the specified 
           pre-trained model is a sentence-transformers checkpoint or 
           not. Defaults to False, meaning that it should be interpreted 
@@ -116,8 +112,7 @@ def sentence_transformers_finetuning(
             num_labels=len(unique_labels)
         )
     elif loss == 'cosine':
-        loss_fct = torch.nn.CosineEmbeddingLoss(margin=cosine_loss_margin)
-        train_loss = losses.CosineSimilarityLoss(model=model, loss_fct=loss_fct)
+        train_loss = losses.CosineSimilarityLoss(model=model)
     else:
         raise ValueError(f'Unknown loss: "{loss}".')
 
