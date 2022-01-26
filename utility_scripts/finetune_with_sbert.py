@@ -64,6 +64,13 @@ import utils
           '(e.g. NLI) and "cosine" for semantic textual similarity tasks.')
 )
 @click.option(
+    '-clm', '--cosine-loss-margin',
+    type=float,
+    default=0.4,
+    help=('The `margin` parameter to pass to PyTorch\'s `CosineEmbeddingLoss`. '
+          'Ignored unless loss="cosine".')
+)
+@click.option(
     '-c', '--config-file', 'path_to_config_file',
     type=click.Path(exists=True, dir_okay=False),
     required=True,
@@ -89,6 +96,7 @@ def main(
     split_seed,
     path_to_dev_dataset,
     loss,
+    cosine_loss_margin,
     path_to_config_file,
     normalize_labels,
     output_path,
@@ -149,6 +157,7 @@ def main(
         dev_samples=valid_samples,
         loss=loss,
         output_path=output_path,
+        cosine_loss_margin=cosine_loss_margin,
         is_sbert_model=is_sbert_model,
         **config
     )
