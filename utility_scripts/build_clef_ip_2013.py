@@ -1,4 +1,5 @@
 from pathlib import Path
+import csv
 import re
 import xml.etree.ElementTree as ET
 
@@ -153,13 +154,15 @@ def make_dataset(
                 rel_patent_fused_content = " ".join(
                     [rel_patent_abstract] + rel_patent_claims
                 )
-                fp.write(",".join([
+
+                writer = csv.writer(fp, quoting=csv.QUOTE_ALL)
+                writer.writerow([
                     q_patent_ucid,
                     q_patent_fused_content,
                     rel_patent_ucid,
                     rel_patent_fused_content,
                     str(label)
-                ]) + "\n")
+                ])
         else:
             q_patent_output_path = \
                 output_dir / subset / "qs" / f"{q_patent_ucid}.dat"
