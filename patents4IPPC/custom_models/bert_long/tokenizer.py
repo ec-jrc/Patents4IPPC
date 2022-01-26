@@ -28,11 +28,15 @@ class BertLongTokenizer(BertTokenizer):
         cls, pretrained_model_name_or_path, *init_inputs, **kwargs
     ):
         config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
-        attention_window = getattr(config, "attention_window", 512)
+        assert hasattr(config, "attention_window"), \
+            "No value for `attention_window` was found in the configuration file."
+        assert min(config.attention_window) == max(config.attention_window), \
+            "Different `attention_window` values for different layers is not supported."
+
         return super(BertLongTokenizer, cls).from_pretrained(
             pretrained_model_name_or_path,
             *init_inputs,
-            attention_window=attention_window,
+            attention_window=config.attention_window[0],
             **kwargs
         )
 
@@ -52,11 +56,15 @@ class BertLongTokenizerFast(BertTokenizerFast):
         cls, pretrained_model_name_or_path, *init_inputs, **kwargs
     ):
         config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
-        attention_window = getattr(config, "attention_window", 512)
+        assert hasattr(config, "attention_window"), \
+            "No value for `attention_window` was found in the configuration file."
+        assert min(config.attention_window) == max(config.attention_window), \
+            "Different `attention_window` values for different layers is not supported."
+
         return super(BertLongTokenizerFast, cls).from_pretrained(
             pretrained_model_name_or_path,
             *init_inputs,
-            attention_window=attention_window,
+            attention_window=config.attention_window[0],
             **kwargs
         )
 
