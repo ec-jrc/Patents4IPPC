@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from scipy.stats import spearmanr
 from sklearn.metrics.pairwise import paired_cosine_distances
 from sklearn.metrics import ndcg_score
@@ -16,12 +17,13 @@ def compute_cosine_scores(
         dataset = dataset.sample(frac=fraction)
     
     queries = dataset['query'].values.tolist()
-    query_embeddings = mdl.embed_documents(
-        queries,
-        batch_size=batch_size,
-        do_lowercase=do_lowercase,
-        show_progress=True
-    )
+    with torch.no_grad():
+        query_embeddings = mdl.embed_documents(
+            queries,
+            batch_size=batch_size,
+            do_lowercase=do_lowercase,
+            show_progress=True
+        )
     if precomputed_response_embeddings is None:
         responses = dataset['response'].values.tolist()
         response_embeddings = mdl.embed_documents(
