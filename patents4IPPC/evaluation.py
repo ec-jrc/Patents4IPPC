@@ -24,20 +24,20 @@ def compute_cosine_scores(
             do_lowercase=do_lowercase,
             show_progress=True
         )
-    if precomputed_response_embeddings is None:
-        responses = dataset['response'].values.tolist()
-        response_embeddings = mdl.embed_documents(
-            responses, batch_size=batch_size, do_lowercase=do_lowercase
+        if precomputed_response_embeddings is None:
+            responses = dataset['response'].values.tolist()
+            response_embeddings = mdl.embed_documents(
+                responses, batch_size=batch_size, do_lowercase=do_lowercase
+            )
+        else:
+            response_embeddings = np.stack([
+                precomputed_response_embeddings[id_]
+                for id_ in dataset['response_id']
+            ]).astype(np.float32)
+        
+        cosine_scores = 1 - paired_cosine_distances(
+            query_embeddings, response_embeddings
         )
-    else:
-        response_embeddings = np.stack([
-            precomputed_response_embeddings[id_]
-            for id_ in dataset['response_id']
-        ]).astype(np.float32)
-    
-    cosine_scores = 1 - paired_cosine_distances(
-        query_embeddings, response_embeddings
-    )
 
     result = dataset[['query_id', 'response_id', 'label']]
     result['cosine_score'] = cosine_scores
