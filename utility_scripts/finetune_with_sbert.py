@@ -26,6 +26,14 @@ import utils
           'HuggingFace transformers model.')
 )
 @click.option(
+    "-ea", "--encoder-attribute-name",
+    type=str,
+    default="encoder",
+    help=("Name of the attribute that holds the encoder module of the "
+          "Transformer. Needed in case you want to fine-tune only some "
+          "of the top layers of the model.")
+)
+@click.option(
     '-d', '--dataset', 'path_to_dataset',
     type=click.Path(exists=True, dir_okay=False),
     required=True,
@@ -84,6 +92,7 @@ import utils
 def main(
     path_to_model_dir,
     is_sbert_model,
+    encoder_attribute_name,
     path_to_dataset,
     validation_portion,
     split_seed,
@@ -144,11 +153,12 @@ def main(
 
     config = json.loads(Path(path_to_config_file).read_text())
     sbert_finetuning.sentence_transformers_finetuning(
-        model_name_or_path=path_to_model_dir,
+        model_name_or_path=path_to_model_dir,        
         train_samples=train_samples,
         dev_samples=valid_samples,
         loss=loss,
         output_path=output_path,
+        encoder_attribute_name=encoder_attribute_name,
         is_sbert_model=is_sbert_model,
         **config
     )

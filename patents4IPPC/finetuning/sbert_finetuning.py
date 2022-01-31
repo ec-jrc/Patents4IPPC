@@ -20,10 +20,12 @@ def sentence_transformers_finetuning(
     max_sequence_length,
     epochs,
     output_path,
+    encoder_attribute_name="encoder",
     learning_rate=2e-5,
     weight_decay=0.01,
     is_sbert_model=False,
-    seed=0
+    seed=0,
+    finetune_top_k_layers=-1
 ):
     """Fine-tune a HuggingFace transformers or sentence-transformers 
     model on a classification or Semantic Textual Similarity (STS) task.
@@ -46,6 +48,9 @@ def sentence_transformers_finetuning(
           will be padded, whereas longer sequences will be truncated.
         epochs (int): Number of fine-tuning epochs.
         output_path (str): Path where the fine-tuned model will be saved.
+        encoder_attribute_name (str): Name of the attribute that holds 
+          the encoder module of the Transformer. Needed in case you want 
+          to fine-tune only some of the top layers of the model.        
         learning_rate (float, optional): Learning rate to use for 
           fine-tuning. Defaults to 2e-5.
         weight_decay (float, optional): Weight decay coefficient to use 
@@ -56,6 +61,9 @@ def sentence_transformers_finetuning(
           as a plain HuggingFace transformers model.
         seed (int, optional): Random seed used for fine-tuning
           Defaults to 0.
+        finetune_top_k_layers (int, optional): Number of top layers to 
+          fine-tune while freezing the others. Defaults to -1 (i.e. 
+          fine-tune all layers).
 
     Raises:
         ValueError: `loss` is neither 'softmax' nor 'cosine'.
@@ -63,6 +71,11 @@ def sentence_transformers_finetuning(
     Returns:
         SentenceTransformer: The fine-tuned model.
     """
+
+    assert finetune_top_k_layers != 0, \
+        ("sentence-transformers doesn't add any additional trainable "
+         "parameter on top of the Transformer model, so you must "
+         "fine-tune at least one of its layers.")
 
     # Fix random seeds for reproducibility
     random.seed(seed)
@@ -87,6 +100,21 @@ def sentence_transformers_finetuning(
         # Build the model used for fine-tuning, which is the composition of
         # the contextual word embedding model and the pooling model
         model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+
+    # Optionally freeze some of the model's layers
+    if finetune_top_k_layers > 0:
+        transformer_model = model._first_module().auto_model
+        encoder = getattr(transformer_model, encoder_attribute_name)
+        encoder_layers = next(
+            filter(
+                lambda module: isinstance(module, torch.nn.ModuleList),
+                encoder._modules.values()
+            )
+        )        
+        # Freeze all layers, then unfreeze some
+        transformer_model.requires_grad_(False)
+        for i in range(1, finetune_top_k_layers + 1):
+            encoder_layers[-i].requires_grad_(True)
 
     # Set the maximum sequence length. Longer sequences are truncated
     model.max_seq_length = max_sequence_length

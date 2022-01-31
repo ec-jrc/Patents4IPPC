@@ -5,5 +5,6 @@
     "epochs": 3,
     "learning_rate": 0.00002,
     "weight_decay": 0.01,
-    "seed": 0
+    "seed": 0,
+    "finetune_top_k_layers": -1
 }
