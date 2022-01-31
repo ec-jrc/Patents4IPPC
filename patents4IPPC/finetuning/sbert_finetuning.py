@@ -20,6 +20,7 @@ def sentence_transformers_finetuning(
     max_sequence_length,
     epochs,
     output_path,
+    evaluation_steps=1000,
     encoder_attribute_name="encoder",
     learning_rate=2e-5,
     weight_decay=0.01,
@@ -48,6 +49,10 @@ def sentence_transformers_finetuning(
           will be padded, whereas longer sequences will be truncated.
         epochs (int): Number of fine-tuning epochs.
         output_path (str): Path where the fine-tuned model will be saved.
+        evaluation_steps (int, optional): Number of training steps after 
+          which the model is evaluated on the validation set. Note that 
+          the model is also evaluated after the end of each epoch. 
+          Defaults to 1000.
         encoder_attribute_name (str): Name of the attribute that holds 
           the encoder module of the Transformer. Needed in case you want 
           to fine-tune only some of the top layers of the model.        
@@ -163,8 +168,8 @@ def sentence_transformers_finetuning(
         warmup_steps=warmup_steps,
         optimizer_params={'lr': learning_rate},
         weight_decay=weight_decay,
-        evaluation_steps=1000,
-        output_path=output_path
+        output_path=output_path,
+        evaluation_steps=evaluation_steps
     )
 
     return model

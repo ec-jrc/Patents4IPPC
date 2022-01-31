@@ -66,6 +66,14 @@ import utils
           '"--dataset" option).')    
 )
 @click.option(
+    '--evaluation-steps',
+    type=int,
+    default=1000,
+    help=('Number of training steps after which the model is evaluated on the '
+          'validation set. Note that the model is also evaluated after the '
+          'end of each epoch.')
+)
+@click.option(
     '-l', '--loss',
     type=click.Choice(['softmax', 'cosine']),
     help=('Loss function to minimize. Use "softmax" for classification tasks '
@@ -97,6 +105,7 @@ def main(
     validation_portion,
     split_seed,
     path_to_dev_dataset,
+    evaluation_steps,
     loss,
     path_to_config_file,
     normalize_labels,
@@ -158,6 +167,7 @@ def main(
         dev_samples=valid_samples,
         loss=loss,
         output_path=output_path,
+        evaluation_steps=evaluation_steps,
         encoder_attribute_name=encoder_attribute_name,
         is_sbert_model=is_sbert_model,
         **config
