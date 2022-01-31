@@ -27,7 +27,10 @@ def compute_cosine_scores(
         if precomputed_response_embeddings is None:
             responses = dataset['response'].values.tolist()
             response_embeddings = mdl.embed_documents(
-                responses, batch_size=batch_size, do_lowercase=do_lowercase
+                responses,
+                batch_size=batch_size,
+                do_lowercase=do_lowercase,
+                show_progress=True
             )
         else:
             response_embeddings = np.stack([
