@@ -20,6 +20,7 @@ def load_dataset(
 ):
     dataset = pd.read_csv(path_to_dataset).dropna(subset=["query", "response"])
     if normalize_labels:
+        dataset.loc[:, "label"] = dataset["label"] - dataset["label"].min()
         dataset.loc[:, "label"] = dataset["label"] / dataset["label"].max()
     
     if "split" in dataset.columns:
