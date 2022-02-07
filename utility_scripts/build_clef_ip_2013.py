@@ -86,13 +86,22 @@ def get_text_from_tag(tag: ET.Element):
 
     return final_text.strip()
 
-def extract_content_from_patent(patent_file: Path, add_section_tags=False):
+def extract_content_from_patent(
+    patent_file: Path,
+    add_section_tags=False,
+    abstract_only=False
+):
     xml_document_root = ET.parse(patent_file)
+    
     abstract = xml_document_root.find(".//abstract[@lang='EN']")
-    claims = xml_document_root.findall(".//claims[@lang='EN']/claim")
-    
     abstract_text = get_text_from_tag(abstract) if abstract is not None else ""
-    
+    if add_section_tags:
+        abstract_text = f"[abstract] {abstract_text}"    
+
+    if abstract_only:
+        return abstract_text, []
+
+    claims = xml_document_root.findall(".//claims[@lang='EN']/claim")   
     if patent_file.stem.startswith("EP"):
         # ^ EPO patent
         claims_texts = [get_text_from_tag(claim) for claim in claims]
@@ -114,16 +123,18 @@ def extract_content_from_patent(patent_file: Path, add_section_tags=False):
         ]
     
     if add_section_tags:
-        abstract_text = f"[abstract] {abstract_text}"
-        claims_texts = [
-            f"[claim] {claim_text}"
-            for claim_text in claims_texts
-        ]
+        claims_texts = [f"[claim] {claim_text}" for claim_text in claims_texts]
 
     return abstract_text, claims_texts
 
 def make_dataset(
-    subset, qrels, qrels_dir, output_dir, as_csv_files, add_section_tags
+    subset,
+    qrels,
+    qrels_dir,
+    output_dir,
+    as_csv_files,
+    add_section_tags,
+    abstract_only
 ):
     for _, row in qrels.iterrows():
         q_patent_ucid = row["patent_ucid"]
@@ -135,10 +146,10 @@ def make_dataset(
         label = row["label"]
 
         q_patent_abstract, q_patent_claims = extract_content_from_patent(
-            q_patent_file, add_section_tags
+            q_patent_file, add_section_tags, abstract_only
         )
         rel_patent_abstract, rel_patent_claims = extract_content_from_patent(
-            rel_patent_file, add_section_tags
+            rel_patent_file, add_section_tags, abstract_only
         )        
 
         if as_csv_files:
@@ -210,7 +221,19 @@ def make_dataset(
     help=("Whether to add section tags based on which section a given piece "
           "of text was taken from. Useful for BERT for Patents.")
 )
-def main(path_to_qrels_dir, path_to_output_dir, as_csv_files, add_section_tags):
+@click.option(
+    "-a", "--abstract-only",
+    type=bool,
+    is_flag=True,
+    help="Extract only the patents' abstracts, ignoring the claims."
+)
+def main(
+    path_to_qrels_dir,
+    path_to_output_dir,
+    as_csv_files,
+    add_section_tags,
+    abstract_only
+):
     qrels_dir = Path(path_to_qrels_dir)
     train_qrels = pd.read_csv(str(qrels_dir / "train_qrels.csv"))
     test_qrels = pd.read_csv(str(qrels_dir / "test_qrels.csv"))
@@ -224,7 +247,8 @@ def main(path_to_qrels_dir, path_to_output_dir, as_csv_files, add_section_tags):
         qrels_dir=qrels_dir,
         output_dir=output_dir,
         as_csv_files=as_csv_files,
-        add_section_tags=add_section_tags
+        add_section_tags=add_section_tags,
+        abstract_only=abstract_only
     )
 
     make_dataset(
@@ -233,7 +257,8 @@ def main(path_to_qrels_dir, path_to_output_dir, as_csv_files, add_section_tags):
         qrels_dir=qrels_dir,
         output_dir=output_dir,
         as_csv_files=as_csv_files,
-        add_section_tags=add_section_tags
+        add_section_tags=add_section_tags,
+        abstract_only=abstract_only
     )
 
 if __name__ == "__main__":
