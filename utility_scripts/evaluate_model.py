@@ -10,6 +10,46 @@ from patents4IPPC.evaluation import (
 from patents4IPPC.embedders.utils import get_embedder
 
 
+def convert_dataset_to_evaluation_format(path_to_dataset):
+    dataset_dir = Path(path_to_dataset)
+    qrels = pd.read_csv(
+        str(dataset_dir / "qrels.txt"),
+        header=None,
+        names=["path_to_query", "path_to_response", "label"],
+    )
+
+    queries_dir = dataset_dir / "qs"
+    queries_content = {
+        query_file.stem: query_file.read_text().replace("\n", "[SEGMENT_SEP]")
+        for query_file in queries_dir.iterdir()
+    }
+
+    responses_dir = dataset_dir / "rels"
+    responses_content = {
+        response_file.stem: response_file.read_text().replace("\n", "[SEGMENT_SEP]")
+        for response_file in responses_dir.iterdir()
+    }
+
+    def extract_query_ids_and_contents(qrels):
+        query_ids = qrels["path_to_query"].apply(lambda p: Path(p).stem)
+        query_contents = query_ids.map(queries_content)
+        return [query_ids, query_contents]
+    qrels[["query_id", "query"]] = qrels.apply(
+        extract_query_ids_and_contents, axis="columns", result_type="expand"
+    )
+
+    def extract_response_ids_and_contents(qrels):
+        response_ids = qrels["path_to_response"].apply(lambda p: Path(p).stem)
+        response_contents = response_ids.map(responses_content)
+        return [response_ids, response_contents]
+    qrels[["response_id", "response"]] = qrels.apply(
+        extract_response_ids_and_contents, axis="columns", result_type="expand"
+    )
+
+    qrels = qrels.drop(columns=["path_to_query", "path_to_response"])
+    return qrels
+
+
 @click.command()
 @click.option(
     '-mt', '--model-type',
@@ -25,11 +65,14 @@ from patents4IPPC.embedders.utils import get_embedder
 )
 @click.option(
     '-d', '--dataset', 'path_to_dataset',
-    type=click.Path(exists=True, dir_okay=False),
+    type=click.Path(exists=True),
     required=True,
-    help=('Path to a dataset with "standard" column names, i.e. it must have '
-          'at least the following columns: query_id, query, response_id, '
-          'response, label.')
+    help=('Path to a dataset in .csv format with "standard" column names '
+          '(i.e. it must have at least the following columns: query_id, '
+          'query, response_id, response, label) OR path to a directory '
+          'containing a dataset suitable for Hierarchical Transformer '
+          '(i.e. it must contain a "qrels.txt" file and two subdirectories '
+          'called "qs" and "rels").')
 )
 @click.option(
     '-b', '--batch-size',
@@ -64,7 +107,15 @@ def main(
                 'the performances of a DualTransformer model.')
     
     embedder = get_embedder(model_type, path_to_model_checkpoint)
-    dataset = pd.read_csv(path_to_dataset).dropna(subset=['query', 'response'])
+    if Path(path_to_dataset).is_dir():
+        assert model_type == "hierarchical", \
+            ("If you're not evaluating a Hierarchical Transformer model, you "
+             "must provide a dataset in .csv format.")
+        dataset = convert_dataset_to_evaluation_format(path_to_dataset)
+    else:
+        dataset = pd.read_csv(path_to_dataset)
+    
+    dataset = dataset.dropna(subset=['query', 'response'])
 
     precomputed_response_embeddings = None
     if path_to_response_embeddings is not None and model_type == 'dual':
