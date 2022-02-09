@@ -30,20 +30,14 @@ def convert_dataset_to_evaluation_format(path_to_dataset):
         for response_file in responses_dir.iterdir()
     }
 
-    def extract_query_ids_and_contents(qrels):
-        query_ids = qrels["path_to_query"].apply(lambda p: Path(p).stem)
-        query_contents = query_ids.map(queries_content)
-        return [query_ids, query_contents]
-    qrels[["query_id", "query"]] = qrels.apply(
-        extract_query_ids_and_contents, axis="columns", result_type="expand"
-    )
-
-    def extract_response_ids_and_contents(qrels):
-        response_ids = qrels["path_to_response"].apply(lambda p: Path(p).stem)
-        response_contents = response_ids.map(responses_content)
-        return [response_ids, response_contents]
-    qrels[["response_id", "response"]] = qrels.apply(
-        extract_response_ids_and_contents, axis="columns", result_type="expand"
+    def extract_ids_and_contents(qrel):
+        query_id = Path(qrel["path_to_query"]).stem
+        query_content = queries_content[query_id]
+        response_id = Path(qrel["path_to_response"]).stem
+        response_content = responses_content[response_id]        
+        return [query_id, query_content, response_id, response_content]
+    qrels[["query_id", "query", "response_id", "response"]] = qrels.apply(
+        extract_ids_and_contents, axis="columns", result_type="expand"
     )
 
     qrels = qrels.drop(columns=["path_to_query", "path_to_response"])
