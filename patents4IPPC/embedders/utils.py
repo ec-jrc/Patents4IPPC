@@ -5,7 +5,9 @@ from patents4IPPC.embedders.advanced import huggingface, hierarchical
 from patents4IPPC import preprocessing
 
 
-def get_embedder(model_type, path_to_model_checkpoint=None):
+def get_embedder(
+    model_type, path_to_model_checkpoint=None, pooling_mode="mean"
+):
     if model_type == "tfidf":
         if path_to_model_checkpoint is not None:
             embedder = tfidf.TfidfEmbedder.from_pretrained(
@@ -30,11 +32,11 @@ def get_embedder(model_type, path_to_model_checkpoint=None):
         )
     elif model_type == "huggingface":
         embedder = huggingface.HuggingFaceTransformerEmbedder(
-            path_to_model_checkpoint
+            path_to_model_checkpoint, pooling_mode=pooling_mode
         )
     elif model_type == "dual":
         embedder = huggingface.DualTransformerEmbedder(
-            path_to_model_checkpoint
+            path_to_model_checkpoint, pooling_mode=pooling_mode
         )
     elif model_type == "hierarchical":
         embedder = hierarchical.HierarchicalTransformerEmbedder(

@@ -52,6 +52,13 @@ def convert_dataset_to_evaluation_format(path_to_dataset):
     help='Type of model to use for indexing the responses.'
 )
 @click.option(
+    '-p', '--pooling-mode',
+    type=click.Choice(['cls', 'max', 'mean']),
+    default='mean',
+    help=('Strategy for pooling token embeddings into sentence embeddings. '
+          'Only needed when "--model-type" is "huggingface" or "dual".')
+)
+@click.option(
     '-mc', '--model-checkpoint', 'path_to_model_checkpoint',
     type=click.Path(),
     required=True,
@@ -89,6 +96,7 @@ def convert_dataset_to_evaluation_format(path_to_dataset):
 )
 def main(
     model_type,
+    pooling_mode,
     path_to_model_checkpoint,
     path_to_dataset,
     batch_size,
@@ -100,7 +108,9 @@ def main(
                ('Must provide pre-computed response embeddings for evaluating '
                 'the performances of a DualTransformer model.')
     
-    embedder = get_embedder(model_type, path_to_model_checkpoint)
+    embedder = get_embedder(
+        model_type, path_to_model_checkpoint, pooling_mode=pooling_mode
+    )
     if Path(path_to_dataset).is_dir():
         assert model_type == "hierarchical", \
             ("If you're not evaluating a Hierarchical Transformer model, you "

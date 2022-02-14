@@ -20,7 +20,7 @@ from .utils import (
     get_config_class_from_config_params,
     get_embedder_type_from_config_params
 )
-from utils import mean_pool_embeddings_with_attention_mask
+from utils import pool_embeddings_with_attention_mask
 
 
 class HierarchicalTransformer(torch.nn.Module):
@@ -29,10 +29,11 @@ class HierarchicalTransformer(torch.nn.Module):
         segment_transformer,
         document_embedder_type=DocumentEmbedderType.TRANSFORMER,
         document_embedder_config=DEFAULT_DOCUMENT_EMBEDDER_CONFIG,
-        segment_transformer_inner_batch_size=2
+        segment_transformer_inner_batch_size=2,
         # ^ NOTE: This is NOT the effective batch size for the segment
         # transformer, but rather the amount of samples on which it can
         # perform a forward pass without incurring in an OOM error.
+        segment_transformer_pooling_mode="mean"
     ):
         super().__init__()
         self.segment_transformer = segment_transformer
@@ -43,6 +44,8 @@ class HierarchicalTransformer(torch.nn.Module):
         )
         self.segment_transformer_inner_batch_size = \
             segment_transformer_inner_batch_size
+        self.segment_transformer_pooling_mode = \
+            segment_transformer_pooling_mode            
 
     def forward(
         self,
@@ -67,8 +70,10 @@ class HierarchicalTransformer(torch.nn.Module):
     def get_segment_embeddings(self, encoded_inputs):
         token_embeddings = self._get_token_embeddings(encoded_inputs)
         # ^ (n_total_segments, segment_length, embedding_size)
-        segment_embeddings = mean_pool_embeddings_with_attention_mask(
-            token_embeddings, encoded_inputs["attention_mask"]
+        segment_embeddings = pool_embeddings_with_attention_mask(
+            embeddings=token_embeddings,
+            attention_mask=encoded_inputs["attention_mask"],
+            mode=self.segment_transformer_pooling_mode
         )
         # ^ (n_total_segments, embedding_size)
         return segment_embeddings        
@@ -175,6 +180,18 @@ class HierarchicalTransformer(torch.nn.Module):
         path_to_checkpoint, segment_transformer_inner_batch_size=2
     ):
         checkpoint_dir = Path(path_to_checkpoint)
+
+        segment_transformer_config_file = \
+            (checkpoint_dir
+             / "segment_transformer"
+             / "segment_transformer_config.json")
+        segment_transformer_config_params = \
+            json.loads(segment_transformer_config_file.read_text())
+        segment_transformer_kwargs = {
+            f"segment_transformer_{p_name}": p_value
+            for p_name, p_value in segment_transformer_config_params.items()
+        }
+        
         segment_transformer = AutoModel.from_pretrained(
             str(checkpoint_dir / "segment_transformer")
         )
@@ -191,7 +208,8 @@ class HierarchicalTransformer(torch.nn.Module):
             segment_transformer,
             document_embedder_type,
             document_embedder_config,
-            segment_transformer_inner_batch_size
+            segment_transformer_inner_batch_size,
+            **segment_transformer_kwargs
         )
 
         state_dict = torch.load(
@@ -208,6 +226,15 @@ class HierarchicalTransformer(torch.nn.Module):
 
     def _save_segment_transformer(self, checkpoint_dir):
         segment_transformer_dir = checkpoint_dir / "segment_transformer"
+        segment_transformer_config_file = \
+            segment_transformer_dir / "segment_transformer_config.json"
+        segment_transformer_config_file.write_text(
+            json.dumps(
+                {"pooling_mode": self.segment_transformer_pooling_mode},
+                indent=2,
+                sort_keys=True
+            ) + "\n"
+        )
         self.segment_transformer.save_pretrained(str(segment_transformer_dir))
 
     def _save_document_embedder(self, checkpoint_dir):

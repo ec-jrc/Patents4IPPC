@@ -12,14 +12,21 @@ import utils
 
 class HuggingFaceTransformerEmbedder(BaseEmbedder):
 
-    def __init__(self, model_name_or_path):
+    def __init__(self, model_name_or_path, pooling_mode="mean"):
         """Text embedder based on a HuggingFace transformers model.
 
         Args:
             model_name_or_path (str): Name of a pre-trained model 
               hosted on the HuggingFace model hub OR path to a local 
               pre-trained HuggingFace transformers model.
+            pooling_mode (str, optional): How to pool token embeddings 
+              into sentence embeddings. Allowed values are "cls" ([CLS] 
+              token representation), "max" (elementwise maximum of token 
+              embeddings) and "mean" (average of token embeddings). 
+              Defaults to "mean".
         """
+
+        self.pooling_mode = pooling_mode
 
         self.model = AutoModel.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -31,6 +38,7 @@ class HuggingFaceTransformerEmbedder(BaseEmbedder):
     def embedding_size(self):
         return self.model.config.hidden_size
 
+    @torch.no_grad()
     def embed_documents(
         self, documents, batch_size=64, do_lowercase=False, show_progress=False
     ):
@@ -58,13 +66,14 @@ class HuggingFaceTransformerEmbedder(BaseEmbedder):
             inputs.to(self.device)
             # Run the tokenized batch through the model
             output = self.model(**inputs)
-            # Take the average of the output embeddings as our document
-            # embeddings
-            mean_pooled_output = utils.mean_pool_embeddings_with_attention_mask(
-                output.last_hidden_state, inputs['attention_mask']
+            # Pool the outputs and treat them as our document embeddings
+            pooled_output = utils.pool_embeddings_with_attention_mask(
+                embeddings=output.last_hidden_state,
+                attention_mask=inputs['attention_mask'],
+                mode=self.pooling_mode
             )
             embeddings_batch = (
-                mean_pooled_output
+                pooled_output
                 .detach()
                 .cpu()
                 .numpy()
@@ -76,9 +85,10 @@ class HuggingFaceTransformerEmbedder(BaseEmbedder):
         
         return np.vstack(embeddings)
 
+
 class DualTransformerEmbedder(BaseEmbedder):
     
-    def __init__(self, path_to_pretrained_model_dir):
+    def __init__(self, path_to_pretrained_model_dir, pooling_mode="mean"):
         """Embedder based on a DualTransformer model. The model used to 
         embed documents is always the query model, including the query 
         mapper layer that sits on top of it.
@@ -86,7 +96,14 @@ class DualTransformerEmbedder(BaseEmbedder):
         Args:
             path_to_pretrained_model_dir (str): Path to a pretrained 
               DualTransformer model.
+            pooling_mode (str, optional): How to pool token embeddings 
+              into sentence embeddings. Allowed values are "cls" ([CLS] 
+              token representation), "max" (elementwise maximum of token 
+              embeddings) and "mean" (average of token embeddings). 
+              Defaults to "mean".              
         """
+
+        self.pooling_mode = pooling_mode
 
         pretrained_model_dir = Path(path_to_pretrained_model_dir)        
         # Load the query model, which will be the model that we will use
@@ -137,6 +154,7 @@ class DualTransformerEmbedder(BaseEmbedder):
     def embedding_size(self):
         return self.query_model.config.hidden_size
 
+    @torch.no_grad()
     def embed_documents(
         self, documents, batch_size=64, do_lowercase=False, show_progress=False
     ):
@@ -164,13 +182,14 @@ class DualTransformerEmbedder(BaseEmbedder):
             inputs.to(self.device)
             # Run the tokenized batch through the model
             output = self.query_model(**inputs)
-            # Take the average of the output embeddings as our document
-            # embeddings
-            mean_pooled_output = utils.mean_pool_embeddings_with_attention_mask(
-                output.last_hidden_state, inputs['attention_mask']
-            )
+            # Pool the outputs and treat them as our document embeddings
+            pooled_output = utils.pool_embeddings_with_attention_mask(
+                embeddings=output.last_hidden_state,
+                attention_mask=inputs['attention_mask'],
+                mode=self.pooling_mode
+            )            
             # Project the embeddings using the query mapper
-            projected_output = self.query_mapper(mean_pooled_output)
+            projected_output = self.query_mapper(pooled_output)
             # Add this batch of document embeddings to the list of all
             # embeddings
             embeddings_batch = (
@@ -182,4 +201,4 @@ class DualTransformerEmbedder(BaseEmbedder):
             )
             embeddings.append(embeddings_batch)
         
-        return np.vstack(embeddings)
+        return np.vstack(embeddings)  

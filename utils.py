@@ -104,6 +104,17 @@ def index_documents_as_python_dictionary(
     joblib.dump(index, filename)
 
 # Taken from Huggingface Hub
+def max_pool_embeddings_with_attention_mask(embeddings, attention_mask):
+    input_mask_expanded = (
+        attention_mask
+        .unsqueeze(-1)
+        .expand(embeddings.size())
+        .float()
+    )
+    embeddings[input_mask_expanded == 0] = -1e9
+    return torch.max(embeddings, 1)[0]
+
+# Taken from Huggingface Hub
 def mean_pool_embeddings_with_attention_mask(embeddings, attention_mask):
     input_mask_expanded = (
         attention_mask
@@ -113,6 +124,25 @@ def mean_pool_embeddings_with_attention_mask(embeddings, attention_mask):
     )
     return (torch.sum(embeddings * input_mask_expanded, axis=1)
             / torch.clamp(input_mask_expanded.sum(axis=1), min=1e-9))
+
+def pool_embeddings_with_attention_mask(embeddings, attention_mask, mode="mean"):
+    if mode == "cls":
+        CLS_TOKEN_POSITION = 0
+        return embeddings[:, CLS_TOKEN_POSITION]
+        # ^ NOTE: If the [CLS] token is not the first token of the 
+        #         sequence, then all this obviously doesn't make 
+        #         any sense
+    if mode == "max":
+        return max_pool_embeddings_with_attention_mask(
+            embeddings, attention_mask
+        )
+    if mode == "mean":
+        return mean_pool_embeddings_with_attention_mask(
+            embeddings, attention_mask
+        )
+    raise ValueError(
+        f"Pooling mode '{mode}' is not supported."
+    )
 
 def ucid_to_int(ucid):
     capital_letters = string.ascii_uppercase
