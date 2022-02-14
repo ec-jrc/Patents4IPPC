@@ -43,12 +43,20 @@ from patents4IPPC.custom_models.bert_long import (
     help=("Maximum number of tokens you'd like the model to support after the "
           "conversion.")
 )
+@click.option(
+    "-g", "--global-attention-token", "global_attention_enabled_tokens",
+    multiple=True,
+    default=["[CLS]"],
+    help=("Use this to specify that global attention should be enabled for "
+          "this token.")
+)
 def convert(
     huggingface_model_name,
     head_type,
     output_path,
     attention_window,
-    max_position_embeddings
+    max_position_embeddings,
+    global_attention_enabled_tokens
 ):
     model_class = head_type_to_model_class[head_type]    
     cache_dir = "bert_long_converter_tmp"
@@ -58,6 +66,7 @@ def convert(
         output_path,
         attention_window,
         max_position_embeddings,
+        global_attention_enabled_tokens=global_attention_enabled_tokens,
         cache_dir=cache_dir
     )
     converter.convert()
