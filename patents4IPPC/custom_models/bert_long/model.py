@@ -10,7 +10,16 @@ from .config import BertLongConfig
 
 class BertLongSelfAttention(LongformerSelfAttention):
     def forward(self, *args, **kwargs):
-        #https://github.com/huggingface/transformers/issues/9588#issuecomment-763487508
+        # https://github.com/huggingface/transformers/issues/9588#issuecomment-763487508
+        # NOTE: Before arriving here, the inputs to this `forward` 
+        # method go through `BertModel.forward`. In particular, the 
+        # `attention_mask` tensor is changed in the 
+        # `get_extended_attention_mask` method according to the logic 
+        # illustrated below:
+        #   0 (no attention)     => -10000
+        #   1 (local attention)  =>      0
+        #   2 (global attention) => +10000
+
         hidden_states, attention_mask, layer_head_mask = args[:3]
         attention_mask = attention_mask.squeeze(dim=2).squeeze(dim=1)
         is_index_masked = attention_mask < 0

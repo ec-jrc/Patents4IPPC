@@ -33,11 +33,14 @@ class BertLongConverter:
         output_path,
         attention_window=512,
         max_position_embeddings=4096,
+        global_attention_enabled_tokens=None,
         cache_dir=None
     ):
         self.output_path = output_path
         self.attention_window = attention_window
         self.max_position_embeddings = max_position_embeddings
+        self.global_attention_enabled_tokens = \
+            global_attention_enabled_tokens or ["[CLS]"]
 
         self.model = model_class.from_pretrained(
             huggingface_model_name, cache_dir=cache_dir
@@ -109,7 +112,10 @@ class BertLongConverter:
         self.logger.info("Saving model to %s", self.output_path)
         self.config._name_or_path = str(self.output_path)
         self.model.save_pretrained(self.output_path)
-        self.tokenizer.save_pretrained(self.output_path)
+        self.tokenizer.save_pretrained(
+            self.output_path,
+            global_attention_enabled_tokens=self.global_attention_enabled_tokens
+        )
         self._fix_config_files()
 
     def _replace_single_attention_layer(self, layer, layer_id):
@@ -120,8 +126,6 @@ class BertLongConverter:
         longformer_self_attention.key = layer.attention.self.key
         longformer_self_attention.value = layer.attention.self.value
 
-        # TODO: Check if it's possible to avoid allocating these tensors,
-        # assuming we don't need global attention.
         longformer_self_attention.query_global = copy.deepcopy(
             layer.attention.self.query
         )
