@@ -46,7 +46,7 @@ from patents4IPPC.custom_models.bert_long import (
 @click.option(
     "-g", "--global-attention-token", "global_attention_enabled_tokens",
     multiple=True,
-    default=["[CLS]"],
+    default=[],
     help=("Use this to specify that global attention should be enabled for "
           "this token.")
 )
