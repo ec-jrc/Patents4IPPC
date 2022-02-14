@@ -112,10 +112,9 @@ class BertLongConverter:
         self.logger.info("Saving model to %s", self.output_path)
         self.config._name_or_path = str(self.output_path)
         self.model.save_pretrained(self.output_path)
-        self.tokenizer.save_pretrained(
-            self.output_path,
-            global_attention_enabled_tokens=self.global_attention_enabled_tokens
-        )
+        self.tokenizer.init_kwargs["global_attention_enabled_tokens"] = \
+            self.global_attention_enabled_tokens
+        self.tokenizer.save_pretrained(self.output_path)
         self._fix_config_files()
 
     def _replace_single_attention_layer(self, layer, layer_id):
