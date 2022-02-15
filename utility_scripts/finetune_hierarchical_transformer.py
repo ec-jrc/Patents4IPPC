@@ -21,7 +21,8 @@ def create_new_model(
     path_to_segment_transformer,
     document_embedder_type,
     path_to_document_embedder_config,
-    segment_transformer_inner_batch_size
+    segment_transformer_inner_batch_size,
+    segment_transformer_pooling_mode
 ):
     segment_transformer = AutoModel.from_pretrained(path_to_segment_transformer)
     tokenizer = AutoTokenizer.from_pretrained(path_to_segment_transformer)
@@ -45,7 +46,8 @@ def create_new_model(
         segment_transformer,
         embedder_type_to_enum_value[document_embedder_type],
         document_embedder_config,
-        segment_transformer_inner_batch_size
+        segment_transformer_inner_batch_size,
+        segment_transformer_pooling_mode
     )
 
     return model, tokenizer
@@ -91,6 +93,14 @@ def load_pretrained_model_and_tokenizer(
           "actual batch size depends on the total number of segments within a "
           "batch of documents. For higher efficiency, set this to the maximum "
           "value that the model can handle.")
+)
+@click.option(
+    "-p", "--segment-transformer-pooling-mode",
+    type=click.Choice(["cls", "max", "mean"]),
+    default="mean",    
+    help=("Pooling strategy to use in the segment transformer to go from "
+          "token embeddings to segment embeddings. Ignored if "
+          "'--pretrained-model' was specified.")
 )
 @click.option(
     "-t", "--document-embedder-type",
@@ -159,6 +169,7 @@ def main(
     path_to_pretrained_model_dir,
     path_to_segment_transformer,
     segment_transformer_inner_batch_size,
+    segment_transformer_pooling_mode,
     document_embedder_type,
     segment_transformer_encoder_attr_name,
     path_to_train_dataset_dir,
@@ -178,7 +189,8 @@ def main(
             path_to_segment_transformer,
             document_embedder_type,
             path_to_document_embedder_config,
-            segment_transformer_inner_batch_size
+            segment_transformer_inner_batch_size,
+            segment_transformer_pooling_mode
         )
 
     train_dataset = DocumentSimilarityDataset.from_directory(
