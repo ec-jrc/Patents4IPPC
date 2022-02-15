@@ -226,6 +226,9 @@ class HierarchicalTransformer(torch.nn.Module):
 
     def _save_segment_transformer(self, checkpoint_dir):
         segment_transformer_dir = checkpoint_dir / "segment_transformer"
+        
+        self.segment_transformer.save_pretrained(str(segment_transformer_dir))
+
         segment_transformer_config_file = \
             segment_transformer_dir / "segment_transformer_config.json"
         segment_transformer_config_file.write_text(
@@ -235,7 +238,6 @@ class HierarchicalTransformer(torch.nn.Module):
                 sort_keys=True
             ) + "\n"
         )
-        self.segment_transformer.save_pretrained(str(segment_transformer_dir))
 
     def _save_document_embedder(self, checkpoint_dir):
         document_embedder_dir = checkpoint_dir / "document_embedder"
