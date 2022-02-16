@@ -90,10 +90,16 @@ class BertLongTokenizerFast(BertTokenizerFast):
         global_attention_enabled_tokens=None,
         **kwargs
     ):
-        super().__init__(*args, **kwargs)
         self.model_attention_window = model_attention_window
         self.global_attention_enabled_tokens = \
             global_attention_enabled_tokens or ["[CLS]"]
+        super().__init__(
+            *args,
+            global_attention_enabled_tokens=global_attention_enabled_tokens,
+            # ^ Pass this to `BertTokenizer` so that it'll be saved in 
+            #   the "tokenizer_config.json" file 
+            **kwargs
+        )
 
     @classmethod
     def from_pretrained(
