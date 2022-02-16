@@ -20,6 +20,7 @@ def sentence_transformers_finetuning(
     max_sequence_length,
     epochs,
     output_path,
+    pooling_mode="mean",
     evaluation_steps=1000,
     encoder_attribute_name="encoder",
     learning_rate=2e-5,
@@ -49,6 +50,10 @@ def sentence_transformers_finetuning(
           will be padded, whereas longer sequences will be truncated.
         epochs (int): Number of fine-tuning epochs.
         output_path (str): Path where the fine-tuned model will be saved.
+        pooling_mode (str, optional): Pooling strategy to aggregate
+          token embeddings into a single sentence embedding. Allowed
+          values are "cls", "max" and "mean". Ignored if
+          "is_sbert_model" is True (see below). Defaults to "mean".
         evaluation_steps (int, optional): Number of training steps after 
           which the model is evaluated on the validation set. Note that 
           the model is also evaluated after the end of each epoch. 
@@ -94,17 +99,17 @@ def sentence_transformers_finetuning(
         # Define the Transformer model used for extracting contextual
         # word embeddings
         word_embedding_model = models.Transformer(model_name_or_path)
-        # Define the pooling model used for aggregating the output of the
-        # contextual word embedding model
+        # Define the pooling model used for aggregating the output of
+        # the contextual word embedding model
         pooling_model = models.Pooling(
             word_embedding_model.get_word_embedding_dimension(),
-            pooling_mode_mean_tokens=True,
-            pooling_mode_cls_token=False,
-            pooling_mode_max_tokens=False
+            pooling_mode=pooling_mode
         )
-        # Build the model used for fine-tuning, which is the composition of
-        # the contextual word embedding model and the pooling model
-        model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+        # Build the model used for fine-tuning, which is the composition 
+        # of the contextual word embedding model and the pooling model
+        model = SentenceTransformer(
+            modules=[word_embedding_model, pooling_model]
+        )
 
     # Optionally freeze some of the model's layers
     if finetune_top_k_layers > 0:

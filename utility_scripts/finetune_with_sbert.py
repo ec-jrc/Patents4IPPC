@@ -26,6 +26,15 @@ import utils
           'HuggingFace transformers model.')
 )
 @click.option(
+    "-p", "--pooling-mode",
+    type=click.Choice(["cls", "max", "mean"]),
+    default="mean",
+    help=("Pooling strategy to aggregate token embeddings into a single "
+          "sentence embedding. Allowed values are 'cls', 'max' and 'mean'. "
+          "If --sbert-model was passed, this argument is ignored and the "
+          "pooling mode is taken from the model checkpoint.")
+)
+@click.option(
     "-ea", "--encoder-attribute-name",
     type=str,
     default="encoder",
@@ -100,6 +109,7 @@ import utils
 def main(
     path_to_model_dir,
     is_sbert_model,
+    pooling_mode,
     encoder_attribute_name,
     path_to_dataset,
     validation_portion,
@@ -167,6 +177,7 @@ def main(
         dev_samples=valid_samples,
         loss=loss,
         output_path=output_path,
+        pooling_mode=pooling_mode,
         evaluation_steps=evaluation_steps,
         encoder_attribute_name=encoder_attribute_name,
         is_sbert_model=is_sbert_model,
