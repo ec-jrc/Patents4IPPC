@@ -30,6 +30,12 @@ python utility_scripts/build_trec_chem_201X_pa_qrels.py \
     --english-only \
     -o assets/data/intermediate/TREC-Chem/2011/PA_qrels.csv
 
+echo "Building CLEF-IP 2013 qrels..."
+python utility_scripts/build_clef_ip_2013_qrels.py \
+    -c assets/data/raw/CLEF-IP/2013/corpus \
+    -tq assets/data/raw/CLEF-IP/2013/topics_and_qrels \
+    -o assets/data/intermediate/CLEF-IP/2013/qrels
+
 # echo "Building PAJ corpus..."
 # python utility_scripts/build_paj_corpus.py \
 #     -i assets/data/raw/NTCIR/tcdata_patent_paj/paj \

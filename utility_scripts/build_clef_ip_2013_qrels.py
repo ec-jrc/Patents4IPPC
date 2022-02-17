@@ -205,14 +205,14 @@ def main(path_to_corpus, path_to_topics_and_qrels_dir, path_to_output_dir):
         training_topics_tfiles_dir,
         training_topics_file,
         training_qrels_file,
-        num_negatives_per_positive=2
+        num_negatives_per_positive=1
     )
     test_dataset = get_qrels(
         corpus_dir,
         test_topics_tfiles_dir,
         test_topics_file,
         test_qrels_en_file,
-        num_negatives_per_positive=2
+        num_negatives_per_positive=1
     )
 
     output_dir = Path(path_to_output_dir)

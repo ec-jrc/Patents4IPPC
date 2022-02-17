@@ -13,9 +13,72 @@ python utility_scripts/build_helmers_manual.py \
     -d assets/data/raw/Helmers_manual \
     --preprocess \
     -o assets/data/processed/helmers_manual.csv
-    # NOTE: It is better not to include titles in this case as some of them
-    # have been truncated and thus end with three dots (...)
-    #--use-titles
+
+echo "Building Helmers manual (full-texts)..."
+###############################################################################
+echo ""
+echo "Building the Helmers full-texts dataset requires scraping patent claims from Google Patents, which requires to download a webdriver."
+echo ""
+
+echo "Which browser are you running?: (chrome|firefox)"
+read WD_TYPE
+while [ $WD_TYPE != "chrome" ] && [ $WD_TYPE != "firefox" ]; do
+    echo "Please enter \"chrome\" or \"firefox\":"
+    read WD_TYPE
+done
+
+echo ""
+
+if [ $WD_TYPE == "chrome" ]; then
+    echo "Please download and unzip the Chrome webdriver from here (make sure to download the one that is compatible with your version of Chrome):"
+    echo "https://chromedriver.chromium.org/downloads"
+    echo ""
+fi
+
+if [ $WD_TYPE == "firefox" ]; then
+    echo "Please download and unzip the Gecko webdriver from here (go to the latest release, look for \"Assets\" and download the webdriver based on what OS you have):"
+    echo "https://github.com/mozilla/geckodriver/releases"
+    echo ""
+fi
+
+echo "Now please enter the path to the unzipped webdriver you just downloaded:"
+read WD_PATH
+while [ ! -f "$WD_PATH" ]; do
+    echo "File \"$WD_PATH\" does not exist. Please enter a valid path:"
+    read WD_PATH
+done
+
+echo ""
+echo "Back to building the dataset..."
+###############################################################################
+python utility_scripts/build_helmers_manual.py \
+    -d assets/data/raw/Helmers_manual \
+    --preprocess \
+    --scrape-claims \
+    --webdriver $WD_PATH \
+    --webdriver-type $WD_TYPE \
+    --separate-sections \
+    -o assets/data/processed/helmers_manual_full_texts
+
+echo "Building Helmers manual (full-texts, CSV)..."
+python utility_scripts/build_helmers_manual.py \
+    -d assets/data/raw/Helmers_manual \
+    --preprocess \
+    --scrape-claims \
+    --webdriver $WD_PATH \
+    --webdriver-type $WD_TYPE \
+    -o assets/data/processed/helmers_manual_full_texts
+
+echo "Building CLEF-IP 2013 (CSV)..."
+python utility_scripts/build_clef_ip_2013.py \
+    -q assets/data/intermediate/CLEF-IP/2013/qrels \
+    -o assets/data/processed/CLEF-IP/2013/csv \
+    --as-csv-files
+
+echo "Building CLEF-IP 2013..."
+python utility_scripts/build_clef_ip_2013.py \
+    -q assets/data/intermediate/CLEF-IP/2013/qrels \
+    -o assets/data/processed/CLEF-IP/2013/normal
 
 echo "Building TREC-Chem 2009 automatic..."
 python utility_scripts/build_trec_chem_automatic.py \

@@ -28,6 +28,12 @@ sh get_TREC-Chem_2010_TS_topics.sh assets/data/raw/TREC-Chem/2010/TS_topics.xml
 echo "Downloading TREC-Chem 2011 PA topics..."
 sh get_TREC-Chem_2011_PA_topics.sh assets/data/raw/TREC-Chem/2011/PA_topics
 
+echo "Downloading CLEF-IP 2013 corpus (may take several hours)..."
+sh get_CLEF-IP_2013_corpus.sh assets/data/raw/CLEF-IP/2013/corpus
+
+echo "Downloading CLEF-IP 2013 topics & qrels..."
+sh get_CLEF-IP_2013_qrels.sh assets/data/raw/CLEF-IP/2013/topics_and_qrels
+
 echo "Downloading Helmers manual..."
 sh get_helmers_manual.sh assets/data/raw/Helmers_manual
 
