@@ -132,7 +132,9 @@ def main(
             'State': lambda states: states.values[0],  # State is constant
             'Score': lambda scores: scores.values[0],  # Score is constant
             'Important part for the decision':
-                lambda parts: '|'.join(parts.dropna().values)
+                lambda parts: '|'.join(
+                    map(preprocessing.clean_patstat, parts.dropna().values)
+                )
         })
         .reset_index(drop=False)
     )
