@@ -102,12 +102,18 @@ class HierarchicalTransformerTextSimilarityExplainer:
             text2_encoded_segments["input_ids"].detach().cpu().tolist()
         )
 
+        text1_segments = \
+            text1 if isinstance(text1, list) else text1.split("[SEGMENT_SEP]")
+        text2_segments = \
+            text2 if isinstance(text2, list) else text2.split("[SEGMENT_SEP]")            
         return (
             text1_tokens,
             text1_token_attributions,
+            text1_segments,
             text1_segment_attributions,
             text2_tokens,
             text2_token_attributions,
+            text2_segments,
             text2_segment_attributions
         )
 
@@ -190,7 +196,7 @@ class HierarchicalTransformerTextSimilarityExplainer:
         return token_attributions, segment_attributions
 
     def _summarize_attributions(self, attributions):
-        attributions = attributions.sum(dim=-1).squeeze(0)
+        attributions = attributions.sum(dim=-1)
         attributions = attributions / torch.norm(attributions)
         return attributions
 
