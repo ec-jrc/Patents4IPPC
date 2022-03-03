@@ -66,7 +66,10 @@ class HuggingFaceTextSimilarityExplainer:
         )
 
         return (
-            text1_tokens, text1_attributions, text2_tokens, text2_attributions
+            text1_tokens,
+            text1_attributions.detach().cpu().tolist(),
+            text2_tokens,
+            text2_attributions.detach().cpu().tolist()
         )
 
     def _construct_baselines_and_inputs(self, text1, text2):

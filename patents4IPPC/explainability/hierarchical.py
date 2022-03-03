@@ -108,13 +108,13 @@ class HierarchicalTransformerTextSimilarityExplainer:
             text2 if isinstance(text2, list) else text2.split("[SEGMENT_SEP]")            
         return (
             text1_tokens,
-            text1_token_attributions,
+            text1_token_attributions.detach().cpu().tolist(),
             text1_segments,
-            text1_segment_attributions,
+            text1_segment_attributions.detach().cpu().tolist(),
             text2_tokens,
-            text2_token_attributions,
+            text2_token_attributions.detach().cpu().tolist(),
             text2_segments,
-            text2_segment_attributions
+            text2_segment_attributions.detach().cpu().tolist()
         )
 
     def _construct_baselines_and_inputs(self, text1, text2):
