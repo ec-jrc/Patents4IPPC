@@ -34,8 +34,7 @@ class HierarchicalTransformerTextSimilarityExplainer:
         self.model.to(self.device)
         
         if disable_gradients_computation_for_segment_transformer:
-            for p in self.model.segment_transformer.parameters():
-                p.requires_grad = False        
+            self.model.segment_transformer.requires_grad_(False)
 
     def explain(
         self,
