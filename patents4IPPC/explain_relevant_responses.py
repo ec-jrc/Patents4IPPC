@@ -151,7 +151,8 @@ def main(
         )
     elif model_type == "hierarchical":
         explainer = HierarchicalTransformerTextSimilarityExplainer(
-            path_to_model
+            path_to_model,
+            disable_gradients_computation_for_segment_transformer=True
         )
 
     predictions = pd.read_csv(path_to_predictions)

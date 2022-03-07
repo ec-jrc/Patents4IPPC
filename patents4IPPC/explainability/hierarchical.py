@@ -18,9 +18,13 @@ from utils import pool_embeddings_with_attention_mask
 
 class HierarchicalTransformerTextSimilarityExplainer:
     
-    def __init__(self, path_to_model):
+    def __init__(
+        self,
+        path_to_model,
+        disable_gradients_computation_for_segment_transformer=False
+    ):
         self.model = HierarchicalTransformer.from_pretrained(
-            path_to_model, segment_transformer_inner_batch_size=2
+            path_to_model, segment_transformer_inner_batch_size=1
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
             Path(path_to_model) / "segment_transformer"
@@ -28,6 +32,10 @@ class HierarchicalTransformerTextSimilarityExplainer:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
         self.model.to(self.device)
+        
+        if disable_gradients_computation_for_segment_transformer:
+            for p in self.model.segment_transformer.parameters():
+                p.requires_grad = False        
 
     def explain(
         self,
