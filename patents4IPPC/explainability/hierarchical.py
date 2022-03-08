@@ -199,7 +199,8 @@ class HierarchicalTransformerTextSimilarityExplainer:
 
     def _get_document_embedding(self, segment_embeddings):
         return self.model.get_document_embeddings(
-            segment_embeddings, [("text", segment_embeddings.size()[1])]
+            segment_embeddings.squeeze(0),
+            [("text", segment_embeddings.size()[1])]
         )
 
     def _compute_attributions(
