@@ -4,4 +4,8 @@ from .document_embedder_config import  (
     TransformerBasedDocumentEmbedderConfig,    
 )
 from .document_embedder_type import DocumentEmbedderType
-from .document_embedder import get_document_embedder
+from .document_embedder import (
+    get_document_embedder,
+    RecurrenceBasedDocumentEmbedder,
+    TransformerBasedDocumentEmbedder
+)
