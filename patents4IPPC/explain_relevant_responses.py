@@ -161,7 +161,7 @@ def main(
             row["query"],
             row["response"],
             n_steps=steps_for_integrated_gradients,
-            internal_batch_size=2,
+            internal_batch_size=1,
             normalize_attributions=False
         )
         if model_type == "huggingface":
