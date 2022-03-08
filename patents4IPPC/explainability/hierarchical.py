@@ -10,10 +10,12 @@ import torch
 from patents4IPPC.custom_models.hierarchical_transformer import (
     HierarchicalTransformer
 )
+from patents4IPPC.custom_models.hierarchical_transformer.embedding_documents import (
+    RecurrenceBasedDocumentEmbedder
+)
 from patents4IPPC.custom_models.hierarchical_transformer.utils import (
     move_encoded_inputs_to_device, prepare_inputs_for_hierarchical_transformer
 )
-from utils import pool_embeddings_with_attention_mask
 
 
 class HierarchicalTransformerTextSimilarityExplainer:
@@ -297,6 +299,12 @@ class HierarchicalTransformerTextSimilarityExplainer:
         n_steps,
         internal_batch_size        
     ):
+        self._maybe_disable_cudnn()
+        # ^ If the `document_embedder` module of the model is
+        #   recurrence-based, we must disable CUDNN because computing
+        #   gradients for a recurrent layer is not supported when said
+        #   layer is in "eval" mode
+        # (https://github.com/pytorch/captum/blob/master/docs/faq.md#how-can-i-resolve-cudnn-rnn-backward-error-for-rnn-or-lstm-network)
         attributions, convergence_delta = attribution_engine.attribute(
             inputs=input_ids,
             baselines=baseline_ids,
@@ -305,6 +313,7 @@ class HierarchicalTransformerTextSimilarityExplainer:
             internal_batch_size=internal_batch_size,
             return_convergence_delta=True
         )
+        self._maybe_restore_cudnn_enabled_state()
 
         relative_convergence_delta = torch.abs(
             convergence_delta[0] / torch.sum(attributions)
@@ -316,3 +325,17 @@ class HierarchicalTransformerTextSimilarityExplainer:
                   f"value is {n_steps}).")
 
         return attributions
+
+    def _maybe_disable_cudnn(self):
+        if isinstance(
+            self.model.document_embedder, RecurrenceBasedDocumentEmbedder
+        ):
+            self.was_cudnn_enabled = torch.backends.cudnn.enabled
+            torch.backends.cudnn.enabled = False
+
+    def _maybe_restore_cudnn_enabled_state(self):
+        if isinstance(
+            self.model.document_embedder, RecurrenceBasedDocumentEmbedder
+        ):
+            torch.backends.cudnn.enabled = self.was_cudnn_enabled
+            del self.was_cudnn_enabled
