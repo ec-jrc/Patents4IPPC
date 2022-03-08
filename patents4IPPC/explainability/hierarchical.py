@@ -113,10 +113,10 @@ class HierarchicalTransformerTextSimilarityExplainer:
             )
 
         text1_tokens = self.tokenizer.convert_ids_to_tokens(
-            text1_encoded_segments["input_ids"].detach().cpu().tolist()
+            text1_encoded_segments["input_ids"].detach().cpu().tolist()[0]
         )
         text2_tokens = self.tokenizer.convert_ids_to_tokens(
-            text2_encoded_segments["input_ids"].detach().cpu().tolist()
+            text2_encoded_segments["input_ids"].detach().cpu().tolist()[0]
         )
 
         text1_segments = \
@@ -125,13 +125,13 @@ class HierarchicalTransformerTextSimilarityExplainer:
             text2 if isinstance(text2, list) else text2.split("[SEGMENT_SEP]")            
         return (
             text1_tokens,
-            text1_token_attributions.detach().cpu().tolist(),
+            text1_token_attributions.detach().cpu().tolist()[0],
             text1_segments,
-            text1_segment_attributions.detach().cpu().tolist(),
+            text1_segment_attributions.detach().cpu().tolist()[0],
             text2_tokens,
-            text2_token_attributions.detach().cpu().tolist(),
+            text2_token_attributions.detach().cpu().tolist()[0],
             text2_segments,
-            text2_segment_attributions.detach().cpu().tolist()
+            text2_segment_attributions.detach().cpu().tolist()[0]
         )
 
     def _construct_baselines_and_inputs(self, text1, text2):
@@ -171,17 +171,35 @@ class HierarchicalTransformerTextSimilarityExplainer:
                 else self.tokenizer.pad_token_id
         )
 
+        def unsqueeze_encoded_inputs(encoded_inputs, dim=0):
+            return {k: v.unsqueeze(dim) for k, v in encoded_inputs.items()}
+        
         return (
-            move_encoded_inputs_to_device(text1_encoded_segments, self.device),
-            move_encoded_inputs_to_device(text2_encoded_segments, self.device),
-            move_encoded_inputs_to_device(baseline1_encoded_segments, self.device),
-            move_encoded_inputs_to_device(baseline2_encoded_segments, self.device)
+            move_encoded_inputs_to_device(
+                unsqueeze_encoded_inputs(text1_encoded_segments, dim=0),
+                self.device
+            ),
+            move_encoded_inputs_to_device(
+                unsqueeze_encoded_inputs(text2_encoded_segments, dim=0),
+                self.device
+            ),
+            move_encoded_inputs_to_device(
+                unsqueeze_encoded_inputs(baseline1_encoded_segments, dim=0),
+                self.device
+            ),
+            move_encoded_inputs_to_device(
+                unsqueeze_encoded_inputs(baseline2_encoded_segments, dim=0),
+                self.device
+            )
         )
 
     def _embed_single_text(self, input_ids, attention_mask):
-        document_ids_and_n_segments = [("text", len(input_ids))]
+        document_ids_and_n_segments = [
+            (f"text_{i}", input_ids.size()[1]) for i, _ in enumerate(input_ids)
+        ]
         text_embedding = self.model(
-            {"input_ids": input_ids, "attention_mask": attention_mask},
+            {"input_ids": input_ids.reshape((-1, *input_ids.size()[2:])),
+             "attention_mask": attention_mask.reshape(-1, *attention_mask.size()[2:])},
             document_ids_and_n_segments
         )
         return text_embedding
