@@ -147,48 +147,6 @@ class HierarchicalTransformerTextSimilarityExplainer:
         baseline2_segment_embeddings = torch.zeros_like(
             text2_segment_embeddings
         )
-
-        ################################################################
-        # TODO: Remove commented out code
-
-        # baseline1_encoded_segments = deepcopy(text1_encoded_segments)
-        # baseline1_encoded_segments["input_ids"].apply_(
-        #     lambda token_id:
-        #         token_id
-        #         if token_id in self.tokenizer.all_special_ids
-        #         else self.tokenizer.pad_token_id
-        # )
-        
-        # baseline2_encoded_segments = deepcopy(text2_encoded_segments)
-        # baseline2_encoded_segments["input_ids"].apply_(
-        #     lambda token_id:
-        #         token_id
-        #         if token_id in self.tokenizer.all_special_ids
-        #         else self.tokenizer.pad_token_id
-        # )
-
-        # def unsqueeze_encoded_inputs(encoded_inputs, dim=0):
-        #     return {k: v.unsqueeze(dim) for k, v in encoded_inputs.items()}
-        
-        # return (
-        #     move_encoded_inputs_to_device(
-        #         unsqueeze_encoded_inputs(text1_encoded_segments, dim=0),
-        #         self.device
-        #     ),
-        #     move_encoded_inputs_to_device(
-        #         unsqueeze_encoded_inputs(text2_encoded_segments, dim=0),
-        #         self.device
-        #     ),
-        #     move_encoded_inputs_to_device(
-        #         unsqueeze_encoded_inputs(baseline1_encoded_segments, dim=0),
-        #         self.device
-        #     ),
-        #     move_encoded_inputs_to_device(
-        #         unsqueeze_encoded_inputs(baseline2_encoded_segments, dim=0),
-        #         self.device
-        #     )
-        # )
-        ################################################################
         
         return (
             text1_segment_embeddings.unsqueeze(0).to(self.device),
@@ -198,11 +156,8 @@ class HierarchicalTransformerTextSimilarityExplainer:
         )
 
     def _get_document_embedding(self, segment_embeddings):
-        attention_mask = torch.ones_like(segment_embeddings).to(self.device)
-        return self.model.document_embedder(
-            segment_embeddings.squeeze(0),
-            attention_mask=attention_mask.squeeze(0)
-        )
+        attention_mask = torch.ones(segment_embeddings.size()[:2]).to(self.device)
+        return self.model.document_embedder(segment_embeddings, attention_mask)
 
     def _compute_attributions(
         self,

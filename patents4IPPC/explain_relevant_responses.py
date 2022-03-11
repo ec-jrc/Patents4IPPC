@@ -67,60 +67,6 @@ def format_ht_explainer_output(
         str(output_subdir / f"r_{response_id}_segments.csv"), index=False
     )
 
-# TODO: Remove commented out code
-# def format_ht_explainer_output(
-#     explainer_output, output_dir, query_id, response_id
-# ):
-#     (
-#         query_tokens,
-#         query_token_attributions,
-#         query_segments,
-#         query_segment_attributions,
-#         response_tokens,
-#         response_token_attributions,
-#         response_segments,
-#         response_segment_attributions,        
-#     ) = explainer_output
-
-#     output_subdir = Path(output_dir) / f"q_{query_id}_r_{response_id}"
-#     output_subdir.mkdir(parents=True, exist_ok=True)
-    
-#     n_segments_in_query = len(query_segments)
-#     for i in range(n_segments_in_query):
-#         segment_tokens_and_attributions = pd.DataFrame({
-#             "token": query_tokens[i],
-#             "attribution_score": query_token_attributions[i]
-#         })
-#         segment_tokens_and_attributions.to_csv(
-#             str(output_subdir / f"q_{query_id}_segment_{i:03d}.csv"),
-#             index=False
-#         )
-#     query_segments_and_attributions = pd.DataFrame({
-#         "segment": query_segments,
-#         "attribution_scores": query_segment_attributions
-#     })
-#     query_segments_and_attributions.to_csv(
-#         str(output_subdir / f"q_{query_id}_segments.csv"), index=False
-#     )
-
-#     n_segments_in_response = len(response_segments)
-#     for i in range(n_segments_in_response):
-#         segment_tokens_and_attributions = pd.DataFrame({
-#             "token": response_tokens[i],
-#             "attribution_score": response_token_attributions[i]
-#         })
-#         segment_tokens_and_attributions.to_csv(
-#             str(output_subdir / f"r_{response_id}_segment_{i:03d}.csv"),
-#             index=False
-#         )        
-#     response_segments_and_attributions = pd.DataFrame({
-#         "segment": response_segments,
-#         "attribution_scores": response_segment_attributions
-#     })
-#     response_segments_and_attributions.to_csv(
-#         str(output_subdir / f"r_{response_id}_segments.csv"), index=False
-#     )
-
 @click.command()
 @click.option(
     "-mc", "--model-checkpoint", "path_to_model",
