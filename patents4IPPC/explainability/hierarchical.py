@@ -198,9 +198,10 @@ class HierarchicalTransformerTextSimilarityExplainer:
         )
 
     def _get_document_embedding(self, segment_embeddings):
-        return self.model.get_document_embeddings(
+        attention_mask = torch.ones_like(segment_embeddings).to(self.device)
+        return self.model.document_embedder(
             segment_embeddings.squeeze(0),
-            [("text", segment_embeddings.size()[1])]
+            attention_mask=attention_mask.squeeze(0)
         )
 
     def _compute_attributions(
