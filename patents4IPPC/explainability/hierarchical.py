@@ -55,8 +55,9 @@ class HierarchicalTransformerTextSimilarityExplainer:
         
         # Explain text1 while keeping text2 frozen
         with torch.no_grad():
-            text2_embedding = self._get_document_embedding(
-                text2_segment_embeddings
+            text2_embedding = self.model.document_embedder(
+                text2_segment_embeddings,
+                torch.ones(text2_segment_embeddings.size()[:2]).to(self.device)
             )
         text1_segment_attributions = \
             self._compute_attributions(
@@ -69,8 +70,9 @@ class HierarchicalTransformerTextSimilarityExplainer:
 
         # Explain text2 while keeping text1 frozen
         with torch.no_grad():
-            text1_embedding = self._get_document_embedding(
-                text1_segment_embeddings
+            text1_embedding = self.model.document_embedder(
+                text1_segment_embeddings,
+                torch.ones(text1_segment_embeddings.size()[:2]).to(self.device)
             )
         text2_segment_attributions = \
             self._compute_attributions(
@@ -155,10 +157,6 @@ class HierarchicalTransformerTextSimilarityExplainer:
             baseline2_segment_embeddings.unsqueeze(0).to(self.device)
         )
 
-    def _get_document_embedding(self, segment_embeddings):
-        attention_mask = torch.ones(segment_embeddings.size()[:2]).to(self.device)
-        return self.model.document_embedder(segment_embeddings, attention_mask)
-
     def _compute_attributions(
         self,
         input_segment_embeddings,
@@ -197,10 +195,10 @@ class HierarchicalTransformerTextSimilarityExplainer:
         return signs * normalized_attribution_magnitudes   
 
     def _measure_cosine_similarity(
-        self, input_segment_embeddings, other_text_embedding
+        self, input_segment_embeddings, other_text_embedding, attention_mask
     ):
-        input_embedding = self._get_document_embedding(
-            input_segment_embeddings
+        input_embedding = self.model.document_embedder(
+            input_segment_embeddings, attention_mask
         )
         return torch.cosine_similarity(
             input_embedding, other_text_embedding, dim=1
@@ -221,15 +219,17 @@ class HierarchicalTransformerTextSimilarityExplainer:
         #   gradients for a recurrent layer is not supported when said
         #   layer is in "eval()" mode
         # (https://github.com/pytorch/captum/blob/master/docs/faq.md#how-can-i-resolve-cudnn-rnn-backward-error-for-rnn-or-lstm-network)
+        attention_mask = torch.ones(input_segment_embeddings.size()[:2]).to(self.device)
         attributions, convergence_delta = attribution_engine.attribute(
             inputs=input_segment_embeddings,
             baselines=baseline_segment_embeddings,
-            additional_forward_args=(other_text_embedding,),
+            additional_forward_args=(other_text_embedding, attention_mask),
             n_steps=n_steps,
             internal_batch_size=internal_batch_size,
             return_convergence_delta=True,
             attribute_to_layer_input=True
         )
+        attributions = attributions[0]
         self._maybe_restore_cudnn_enabled_state()
 
         relative_convergence_delta = torch.abs(
