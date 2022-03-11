@@ -223,13 +223,13 @@ class HierarchicalTransformerTextSimilarityExplainer:
             baseline_segment_embeddings,
             other_text_embedding,
             n_steps,
-            internal_batch_size
+            internal_batch_size            
         )
 
         return segment_attributions   
 
     def _summarize_attributions(self, attributions):
-        attributions = attributions.sum(dim=-1)
+        attributions = attributions.sum(dim=-1).squeeze(0)
         attributions = attributions / torch.norm(attributions)
         return attributions
 
@@ -247,7 +247,7 @@ class HierarchicalTransformerTextSimilarityExplainer:
             input_segment_embeddings
         )
         return torch.cosine_similarity(
-            input_embedding, other_text_embedding, dim=0
+            input_embedding, other_text_embedding, dim=1
         )
 
     def _compute_integrated_gradients(
@@ -271,7 +271,8 @@ class HierarchicalTransformerTextSimilarityExplainer:
             additional_forward_args=(other_text_embedding,),
             n_steps=n_steps,
             internal_batch_size=internal_batch_size,
-            return_convergence_delta=True
+            return_convergence_delta=True,
+            attribute_to_layer_input=True
         )
         self._maybe_restore_cudnn_enabled_state()
 
