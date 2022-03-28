@@ -96,7 +96,7 @@ def format_ht_explainer_output(
     required=True,
     help=("Path to a .csv file containing predictions. The file should have "
           "at least the following columns: query, query_id, response, "
-          "response_id, similarity_score.")
+          "response_id, score.")
 )
 @click.option(
     "-s", "--steps-for-integrated-gradients",

@@ -107,11 +107,14 @@ def main(
     del dataset
 
     # Save the results to disk
-    query_names = [Path(f).name for f in input_files for _ in range(k)]
+    queries_flat = [q for q in queries for _ in range(k)]
+    query_names_flat = [Path(f).name for f in input_files for _ in range(k)]
     scores_flat = scores.reshape((-1,))
     results = pd.DataFrame({
-        'query': query_names,
-        'abstract': closest_abstracts,
+        'query': queries_flat,
+        'query_id': query_names_flat,
+        'response': closest_abstracts,
+        'response_id': ids_flat,
         'score': scores_flat
     })
     results.to_csv(output_path, index=False)

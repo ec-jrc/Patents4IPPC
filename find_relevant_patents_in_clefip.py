@@ -11,21 +11,21 @@ from patents4IPPC.similarity_search.faiss_ import FaissDocumentRetriever
 
 @click.command()
 @click.option(
-    '-mt', '--model-type',
+    "-mt", "--model-type",
     type=click.Choice([
-        'tfidf', 'glove', 'use', 'huggingface', 'dual', 'hierarchical'
+        "tfidf", "glove", "use", "huggingface", "dual", "hierarchical"
     ]),
     required=True,
-    help=('Type of model to use for indexing the queries. Note that it should '
-          'be the same model used to create the FAISS index.')
+    help=("Type of model to use for indexing the queries. Note that it should "
+          "be the same model used to create the FAISS index.")
 )
 @click.option(
-    '-mc', '--model-checkpoint', 'path_to_model_checkpoint',
+    "-mc", "--model-checkpoint", "path_to_model_checkpoint",
     type=click.Path(exists=True),
     required=True,
-    help=('Path to a pre-trained model to use for finding relevant patents. '
-          'Note that it should be the same model used to create the FAISS '
-          'index.')
+    help=("Path to a pre-trained model to use for finding relevant patents. "
+          "Note that it should be the same model used to create the FAISS "
+          "index.")
 )
 @click.option(
     "-p", "--pooling-mode",
@@ -36,16 +36,16 @@ from patents4IPPC.similarity_search.faiss_ import FaissDocumentRetriever
           "or \"dual\".")
 )
 @click.option(
-    '-i', '--index', 'path_to_faiss_index',
+    "-i", "--index", "path_to_faiss_index",
     type=click.Path(exists=True, dir_okay=False),
     required=True,
-    help='Path to a FAISS index containing pre-computed embeddings of patents.'
+    help="Path to a FAISS index containing pre-computed embeddings of patents."
 )
 @click.option(
-    '-k', '--top-k', 'k',
+    "-k", "--top-k", "k",
     type=int,
     required=True,
-    help='Number of relevant patents to retrieve for each query.'
+    help="Number of relevant patents to retrieve for each query."
 )
 @click.option(
     "-c", "--corpus-dir", "path_to_corpus_dir",
@@ -55,26 +55,26 @@ from patents4IPPC.similarity_search.faiss_ import FaissDocumentRetriever
           "content of relevant patents.")
 )
 @click.option(
-    '-f', '--files-list', 'path_to_files_list',
+    "-f", "--files-list", "path_to_files_list",
     type=click.Path(exists=True, dir_okay=False),
     required=True,
-    help=('Path to a text file containing the list of indexed patent files. '
-          'Needed to map embedding IDs to actual file names. Must contain one '
-          'file path per line, where said path must be relative to the corpus '
-          'directory.')
+    help=("Path to a text file containing the list of indexed patent files. "
+          "Needed to map embedding IDs to actual file names. Must contain one "
+          "file path per line, where said path must be relative to the corpus "
+          "directory.")
 )
 @click.option(
-    '-g', '--use-gpu',
+    "-g", "--use-gpu",
     is_flag=True,
-    help='Use a GPU for retrieving relevant abstracts with FAISS.'
+    help="Use a GPU for retrieving relevant abstracts with FAISS."
 )
 @click.argument(
-    'input_files',
+    "input_files",
     type=click.Path(exists=True, dir_okay=False),
     nargs=-1
 )
 @click.argument(
-    'output_path',
+    "output_path",
     type=click.Path(exists=False)
 )
 def main(
@@ -93,11 +93,11 @@ def main(
     queries = [Path(f).read_text() for f in input_files]
 
     # Load an embedder
-    print('Loading the embedder...')
+    print("Loading the embedder...")
     embedder = get_embedder(model_type, path_to_model_checkpoint, pooling_mode)
 
     # Embed the queries
-    print('Embedding the queries...')
+    print("Embedding the queries...")
     query_embeddings = embedder.embed_documents(queries)
     del queries
     del embedder
@@ -112,14 +112,16 @@ def main(
     # Use "ids" to retrieve the actual file names from the list
     with open(path_to_files_list, "r") as fp:
         files_list = np.array(fp.read().strip().split("\n"))
-    print('Retrieving file names from IDs...')
+    print("Retrieving file names from IDs...")
     ids_flat = ids.reshape((-1,))
     closest_patents = files_list[ids_flat]
 
     # Extract the content of each relevant patent
     closest_patents_contents = []
     for patent in closest_patents:
-        abstract, claims = extract_content_from_patent(patent)
+        abstract, claims = extract_content_from_patent(
+            Path(path_to_corpus_dir, patent)
+        )
         if model_type == "hierarchical":
             section_separator = "[SEGMENT_SEP]"
         else:
@@ -132,13 +134,13 @@ def main(
     query_names = [Path(f).name for f in input_files for _ in range(k)]
     scores_flat = scores.reshape((-1,))
     results = pd.DataFrame({
-        'query': query_names,
-        'patent_path': closest_patents,
-        'patent_content': closest_patents_contents,
-        'score': scores_flat
+        "query": query_names,
+        "patent_path": closest_patents,
+        "patent_content": closest_patents_contents,
+        "score": scores_flat
     })
     results.to_csv(output_path, index=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main() # pylint: disable=no-value-for-parameter
