@@ -21,6 +21,14 @@ from patents4IPPC.similarity_search.faiss_ import FaissDocumentRetriever
     help='Path to a pre-trained model to use for finding relevant abstracts.'
 )
 @click.option(
+    '-p', '--pooling-mode',
+    type=click.Choice(['cls', 'max', 'mean']),
+    default=None,
+    help=('Pooling strategy for aggregating token embeddings into sentence '
+          'embeddings. Required only when "--model-type" is "huggingface" '
+          'or "dual".')
+)
+@click.option(
     '-i', '--index', 'path_to_faiss_index',
     type=click.Path(exists=True, dir_okay=False),
     required=True,
@@ -66,6 +74,7 @@ from patents4IPPC.similarity_search.faiss_ import FaissDocumentRetriever
 def main(
     model_type,
     path_to_model_checkpoint,
+    pooling_mode,
     path_to_faiss_index,
     k,
     path_to_dataset,
@@ -80,7 +89,7 @@ def main(
 
     # Load an embedder
     print('Loading the embedder...')
-    embedder = get_embedder(model_type, path_to_model_checkpoint)
+    embedder = get_embedder(model_type, path_to_model_checkpoint, pooling_mode)
 
     # Embed the queries
     print('Embedding the queries...')
