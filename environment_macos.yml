@@ -29,7 +29,7 @@ dependencies:
   - c-ares=1.17.1
   - ca-certificates=2020.12.5
   - cachetools=4.2.2
-  - captum=0.5.0  
+  - captum
   - certifi=2020.12.5
   - cffi=1.14.3
   - chardet=3.0.4
@@ -146,7 +146,7 @@ dependencies:
   - sacremoses=0.0.43
   - scikit-learn=0.24.1
   - scipy=1.5.2
-  - selenium=4.1.0  
+  - selenium
   - setuptools=52.0.0
   - six=1.15.0
   - smart_open=5.0.0
