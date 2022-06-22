@@ -6,7 +6,7 @@ The European Green Deal aims to achieve a circular economy with zero pollution. 
 
 **In this project/repository**, we set out to build an Information Retrieval (IR) system that is able to retrieve relevant patents from queries based on specific subsections of BREF documents. Following recent advances in the field of Natural Language Processing, we build an IR engine based on the Transformer architecture supported by [FAISS](https://github.com/facebookresearch/faiss) indexing and demonstrate its superiority compared to legacy approaches. We train and fine-tune our model using several open source datasets and assess its effectiveness by comparing its performance with that of baseline approaches on a brand new dataset provided by JRC.
 
-In particular, the models developed so far were fine-tuned on Industrial Pollution Prevention and Control (IPPC) documents. The engine is fed passages taken from documents called BREFs, which provide technical descriptions of the Best Available Techniques (BAT) in the field of IPPC, and retrieves relevant abstracts from a patent corpus. The former consist of possibly long text fragments concerning the topic considered, while the latter are shorter and exhibit a more technical language.
+In particular, the models developed so far were fine-tuned on Industrial Pollution Prevention and Control (IPPC) documents. The engine is fed passages taken from documents called BREFs, which provide technical descriptions of the Best Available Techniques (BAT) in the field of IPPC, and retrieves relevant abstracts from a patent corpus. The former consists of possibly long text fragments concerning the topic considered, while the latter are shorter and exhibit a more technical language.
 
 ## Authors
 
@@ -26,22 +26,22 @@ Andrea Tacchella (JRC - Seville)
 Two main components take part of our engine:
 
 * A meaningful text embedder
-  
+
   Our models are based on pre-trained Transformers which are compatible with HuggingFace's [transformers](https://huggingface.co/transformers/) library. Most of them were first adaptive-tuned on the specific domain language and then fine-tuned on semantic similarity in a siamese-networks setup taking advantage of the [sentence-transformers](https://sbert.net/) library (SBERT).
-  
+
   We then extended the siamese-networks approach to the case of different models for query and response sides. With this purpose we built the DualTransformer, a 2-in-1 model that uses different architectures for embedding queries and responses.
-  
+
   Note that the models mentioned above are "regular" Transformers, therefore they come with all the known limitations in terms of maximum sequence length and memory requirements. To partly overcome these limitations, we introduce two additional classes of models that can deal with text sequences exceeding 512 tokens (maximum length for BERT-like models):
-  
+
    1. [Longformer](https://arxiv.org/abs/2004.05150)
    2. [Hierarchical Transformer](https://ieeexplore.ieee.org/document/9003958)
-  
+
   While several other variants of the original Transformer architecture have been proposed in the literature to deal with long texts, the two mentioned above have a fundamental feature: they can build on pre-trained regular Transformers.
-  
+
   Finally, we also provide simple baseline models, such as TF-IDF, Glove Embeddings and Universal Sentence Encoder (USE).
 
 * A retrieval pipeline
-  
+
   Once all response embeddings present in a database are computed, a fast retrieval pipeline based on [FAISS](https://github.com/facebookresearch/faiss) indexing can be used to match the most relevant abstracts (according to cosine similarity) to a given query as fast as possible.
 
 ## How to install
@@ -80,12 +80,12 @@ The datasets we have experimented with are:
 Most of the datasets listed above are freely accessible, however there are some caveats:
 
 - Each TREC-Chem dataset is composed of two sub-datasets:
-  
+
    - A sub-dataset for the **Prior Art (PA)** task, where relevance scores are based on citation information. We refer to this sub-dataset as TREC-Chem *automatic* because relevance scores were assigned automatically
    - A sub-dataset for the **Technology Survey (TS)** task, where relevance scores were given by human annotators. For this reason, we refer to this sub-dataset as TREC-Chem *manual*
-  
+
   The *automatic* versions are available for all three datasets (2009, 2010 and 2011). The situation is a little bit different for the *manual* versions of the datasets, because:
-  
+
    - For TREC-Chem 2009 manual and TREC-Chem 2010 manual, queries are freely accessible from the corresponding websites, although relevance judgments are not. We do have them because we reached out to one of the organizers of the TREC-Chem challenge by email, although they haven't been made publicly accessible just yet (but *should* be available by the end of May 2021)
    - For TREC-Chem 2011 manual, queries are freely accessible from the corresponding website but relevance judgments are not available at the moment
 
@@ -346,7 +346,7 @@ We provide several scripts to:
 The typical steps to fine-tune a model are:
 
 1. (Optional) Start from a pretrained BERT-like model and perform an adaptive fine-tuning on some texts (e.g. patent abstracts) to help it become "familiar" with the domain-specific language of such texts. In order to do this, you would run the following script (the parameters may need to be changed accordingly):
-   
+
    ```sh
    python utility_scripts/finetune_with_mlm.py \
    --model assets/models/bert-base-cased \
@@ -358,11 +358,11 @@ The typical steps to fine-tune a model are:
    --config-file sample_configs/config_mlm.json \
    --output-dir assets/models/bert-base-cased-patents
    ```
-   
+
     This step is optional as sometimes you may find pretrained models that are already specialized on a certain domain-specific language (e.g. [Bert for Patents](https://github.com/google/patents-public-data/blob/master/models/BERT%20for%20Patents.md), which already masters patents jargon).
 
 2. Further fine-tune the model on a Semantic Textual Similarity (STS) task or something related to it so that it learns to construct meaningful semantic representations of text sequences. For example, let's say you want to fine-tune the previously obtained model on the STS benchmark dataset. In order to do that, you would run the following script (again, you may want to adjust the parameters depending on your needs):
-   
+
    ```sh
    python utility_scripts/finetune_with_sbert.py \
    --model assets/models/bert-base-cased-patents \
@@ -428,7 +428,7 @@ A few notes about the different options:
 * `--segment-transformer-inner-batch-size` is NOT the batch size that will be used for training the model. It is just the amount of samples that the segment transformer can process at the same time without incurring in an out of memory (OOM) error
 
 * `--train-dataset-dir` and `--eval-dataset-dir` must have the following structure:
-  
+
   ```
   dir/
   ├── qrels.txt
@@ -441,13 +441,13 @@ A few notes about the different options:
       ├── ...
       └── r_patent_file_m
   ```
-  
+
   where each line in `qrels.txt` has the following form:
-  
+
   ```
   qs/q_patent_file_x,rels/r_patent_file_y,label_x_y
   ```
-  
+
   To obtain such directories for the CLEF-IP 2013 dataset, check out [build_clef_ip_2013_qrels.py](utility_scripts/build_clef_ip_2013_qrels.py) and [build_clef_ip_2013.py](utility_scripts/build_clef_ip_2013.py) (invoke them passing "--help" to understand how to use them).
 
 ## Explaining predictions
