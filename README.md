@@ -8,7 +8,7 @@ The European Green Deal aims to achieve a circular economy with zero pollution. 
 
 In particular, the models developed so far were fine-tuned on Industrial Pollution Prevention and Control (IPPC) documents. The engine is fed passages taken from documents called BREFs, which provide technical descriptions of the Best Available Techniques (BAT) in the field of IPPC, and retrieves relevant abstracts from a patent corpus. The former consists of possibly long text fragments concerning the topic considered, while the latter are shorter and exhibit a more technical language.
 
-🇪🇺 A complete description of the project can be found on EU Pubblication: [Patents for industrial pollution prevention and control, Bratières, Sébastien et al., doi:10.2760/056875](https://op.europa.eu/en/publication-detail/-/publication/62438d8a-410c-11ec-89db-01aa75ed71a1/language-en).
+🇪🇺 A complete description of the project can be found on EU Pubblications: [Patents for industrial pollution prevention and control, Bratières, Sébastien et al., doi:10.2760/056875](https://op.europa.eu/en/publication-detail/-/publication/62438d8a-410c-11ec-89db-01aa75ed71a1/language-en).
 
 ## Authors
 
